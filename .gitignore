@@ -1,0 +1,23 @@
+# Add Firebase configuration files to .gitignore
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+
+# Ignore build outputs
+build/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# OS
+.DS_Store
+Thumbs.db

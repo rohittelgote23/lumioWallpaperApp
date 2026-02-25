@@ -68,7 +68,10 @@ class WallpaperThumbnail extends StatelessWidget {
                       ? CachedNetworkImage(
                           imageUrl: wallpaper.thumbnailUrl,
                           fit: BoxFit.cover,
-                          memCacheHeight: (height ?? 300).toInt(),
+                          memCacheHeight:
+                              ((height ?? 300) *
+                                      MediaQuery.of(context).devicePixelRatio)
+                                  .toInt(),
                           placeholder: (context, url) => _buildShimmer(context),
                           errorWidget: (context, url, error) =>
                               _buildError(context),

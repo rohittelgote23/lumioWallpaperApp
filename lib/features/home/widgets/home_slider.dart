@@ -143,9 +143,14 @@ class _HomeSliderState extends State<HomeSlider> {
               CachedNetworkImage(
                 imageUrl: item.thumbnail,
                 fit: BoxFit.cover,
-                placeholder: (_, _) => Container(color: Colors.grey.shade300),
-                errorWidget: (_, _, _) =>
-                    const Icon(Icons.error, color: Colors.white),
+                placeholder: (_, _) =>
+                    Container(color: Theme.of(context).colorScheme.surface),
+                errorWidget: (_, _, _) => Icon(
+                  Icons.error,
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.3),
+                ),
               ),
               Positioned(
                 bottom: 0,

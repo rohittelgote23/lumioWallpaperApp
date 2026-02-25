@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lumiowalls/core/services/wallpaper_service.dart';
 import 'package:path_provider/path_provider.dart';
@@ -13,7 +14,11 @@ class SetWallpaperCubit extends Cubit<SetWallpaperState> {
       super(SetWallpaperInitial());
 
   /// Sets the wallpaper from a URL.
-  Future<void> setWallpaper(String url, int location) async {
+  Future<void> setWallpaper(
+    String url,
+    int location, {
+    BuildContext? context,
+  }) async {
     try {
       emit(SetWallpaperLoading());
 
@@ -26,6 +31,7 @@ class SetWallpaperCubit extends Cubit<SetWallpaperState> {
       final result = await _wallpaperService.setStaticWallpaper(
         filePath: file.path,
         location: location,
+        context: context,
       );
 
       emit(SetWallpaperSuccess(result));
@@ -44,12 +50,17 @@ class SetWallpaperCubit extends Cubit<SetWallpaperState> {
   }
 
   /// Sets wallpaper from a local file path (after cropping)
-  Future<void> setWallpaperFromFile(String filePath, int location) async {
+  Future<void> setWallpaperFromFile(
+    String filePath,
+    int location, {
+    BuildContext? context,
+  }) async {
     try {
       emit(SetWallpaperLoading());
       final result = await _wallpaperService.setStaticWallpaper(
         filePath: filePath,
         location: location,
+        context: context,
       );
       emit(SetWallpaperSuccess(result));
     } catch (e) {

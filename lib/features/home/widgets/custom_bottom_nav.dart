@@ -14,7 +14,7 @@ class CustomBottomNav extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      margin: const EdgeInsets.only(left: 16, right: 16, bottom: 24),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       decoration: BoxDecoration(
         color: theme.cardColor,

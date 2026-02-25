@@ -5,7 +5,6 @@ import 'package:cached_video_player_plus/cached_video_player_plus.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:wallpaper_manager_plus/wallpaper_manager_plus.dart';
-import 'package:image_cropper/image_cropper.dart';
 import '../../../core/data/models/wallpaper_model.dart';
 import '../bloc/download_cubit.dart';
 import '../bloc/set_wallpaper_cubit.dart';
@@ -502,7 +501,7 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
                                               ),
                                               onTap: () {
                                                 Navigator.pop(btmContext);
-                                                _startCropProcess(
+                                                _setWallpaperDirectly(
                                                   widget.wallpaper.fullUrl,
                                                   WallpaperManagerPlus
                                                       .homeScreen,
@@ -527,7 +526,7 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
                                               ),
                                               onTap: () {
                                                 Navigator.pop(btmContext);
-                                                _startCropProcess(
+                                                _setWallpaperDirectly(
                                                   widget.wallpaper.fullUrl,
                                                   WallpaperManagerPlus
                                                       .lockScreen,
@@ -552,7 +551,7 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
                                               ),
                                               onTap: () {
                                                 Navigator.pop(btmContext);
-                                                _startCropProcess(
+                                                _setWallpaperDirectly(
                                                   widget.wallpaper.fullUrl,
                                                   WallpaperManagerPlus
                                                       .bothScreens,
@@ -753,13 +752,12 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
     );
   }
 
-  Future<void> _startCropProcess(
+  Future<void> _setWallpaperDirectly(
     String url,
     int location,
     SetWallpaperCubit cubit,
   ) async {
     if (!mounted) return;
-    // final cubit = context.read<SetWallpaperCubit>(); // Context is invalid here
 
     // 1. Get file
     final file = await cubit.getWallpaperFile(url);
@@ -767,31 +765,16 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Failed to download image for cropping'),
+            content: Text('Failed to download image to set wallpaper'),
           ),
         );
       }
       return;
     }
 
-    // 2. Crop
-    final croppedFile = await ImageCropper().cropImage(
-      sourcePath: file.path,
-      uiSettings: [
-        AndroidUiSettings(
-          toolbarTitle: 'Crop & Adjust',
-          toolbarColor: Colors.black,
-          toolbarWidgetColor: Colors.white,
-          initAspectRatio: CropAspectRatioPreset.original,
-          lockAspectRatio: false,
-          backgroundColor: Colors.black,
-        ),
-      ],
-    );
-
-    if (croppedFile != null && mounted) {
-      // 3. Set Wallpaper from cropped file
-      cubit.setWallpaperFromFile(croppedFile.path, location);
+    // 2. Set Wallpaper directly from file (no cropping)
+    if (mounted) {
+      cubit.setWallpaperFromFile(file.path, location, context: context);
     }
   }
 

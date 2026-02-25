@@ -27,7 +27,13 @@ class CategoriesTab extends StatelessWidget {
             }
 
             return GridView.builder(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.only(
+                top: 16,
+                left: 16,
+                right: 16,
+                bottom: 120,
+              ),
+
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
                 childAspectRatio: 1.5,

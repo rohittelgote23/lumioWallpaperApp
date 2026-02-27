@@ -346,36 +346,6 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
                       ),
                     ),
 
-                    // Title
-                    Positioned(
-                      bottom: 100, // Above control bar
-                      left: 16,
-                      right:
-                          80, // Leave room for Fav button if needed, though it's bottom right
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            widget.wallpaper.title,
-                            style: GoogleFonts.outfit(
-                              color: Colors.white,
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                              shadows: [
-                                Shadow(
-                                  blurRadius: 10.0,
-                                  color: Colors.black.withValues(alpha: 0.5),
-                                  offset: const Offset(0.0, 2.0),
-                                ),
-                              ],
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-
                     // Bottom Left Control Bar (Download, Set, Info)
                     Positioned(
                       bottom: 30,

@@ -199,7 +199,7 @@ class _CategoryScreenViewState extends State<_CategoryScreenView> {
                           ) {
                             return WallpaperThumbnail(
                               wallpaper: state.wallpapers[index],
-                              sectionId: widget.category.id,
+                              sectionId: 'category_screen_${widget.category.id}',
                               index: index,
                             );
                           }, childCount: state.wallpapers.length),

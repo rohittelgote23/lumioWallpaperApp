@@ -19,7 +19,7 @@ class SearchCubit extends Cubit<SearchState> {
     emit(SearchInitial(history: history));
   }
 
-  Future<void> _addToHistory(String query) async {
+  Future<List<String>> _addToHistory(String query) async {
     final prefs = await SharedPreferences.getInstance();
     List<String> history = List.from(state.history);
 
@@ -33,11 +33,7 @@ class SearchCubit extends Cubit<SearchState> {
     }
 
     await prefs.setStringList(_historyKey, history);
-    // The state will be updated in the search method or clearing method
-    // But we need to update the current state with new history
-    // However, usually we emit a new state (Loading/Success) which will take the history
-    // If we are just adding, we might be in Initial or Success.
-    // For now, search() handles the emit.
+    return history;
   }
 
   Future<void> clearHistory() async {
@@ -72,11 +68,8 @@ class SearchCubit extends Cubit<SearchState> {
       return;
     }
 
-    // Add to history and get updated list
-    await _addToHistory(query);
-    // Reload history from prefs to be sure or just use the logic
-    final prefs = await SharedPreferences.getInstance();
-    final history = prefs.getStringList(_historyKey) ?? [];
+    // Add to history and get updated list directly
+    final history = await _addToHistory(query);
 
     emit(SearchLoading(history: history));
 

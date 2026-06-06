@@ -107,10 +107,13 @@ class WallpaperThumbnail extends StatelessWidget {
                 bottom: 8,
                 right: 8,
                 child: BlocBuilder<FavoritesCubit, FavoritesState>(
+                  buildWhen: (previous, current) {
+                    final wasFavorite = previous.favoriteIds.contains(wallpaper.id);
+                    final isNowFavorite = current.favoriteIds.contains(wallpaper.id);
+                    return wasFavorite != isNowFavorite;
+                  },
                   builder: (context, state) {
-                    final isFavorite = context
-                        .read<FavoritesCubit>()
-                        .isFavorite(wallpaper.id);
+                    final isFavorite = state.favoriteIds.contains(wallpaper.id);
                     return GestureDetector(
                       onTap: () {
                         context.read<FavoritesCubit>().toggleFavorite(

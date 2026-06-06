@@ -56,11 +56,8 @@ class FavoritesRepository {
         }, SetOptions(merge: true));
         return true;
       } else {
-        if (!isFavoriteLocally(wallpaperId)) {
-          await _localFavoritesBox.add(wallpaperId);
-          return true;
-        }
-        return false;
+        await _localFavoritesBox.put(wallpaperId, wallpaperId);
+        return true;
       }
     } catch (e) {
       throw Exception('Failed to add favorite: $e');
@@ -76,6 +73,12 @@ class FavoritesRepository {
         });
         return true;
       } else {
+        if (_localFavoritesBox.containsKey(wallpaperId)) {
+          await _localFavoritesBox.delete(wallpaperId);
+          return true;
+        }
+        
+        // Fallback for legacy database entries using auto-increment integer keys
         final key = _localFavoritesBox.keys.firstWhere(
           (key) => _localFavoritesBox.get(key) == wallpaperId,
           orElse: () => null,
@@ -95,7 +98,8 @@ class FavoritesRepository {
   /// Check if a wallpaper is in favorites (mostly for UI checks, might need async for cloud)
   /// For accurate cloud status, better to rely on the list loaded in Cubit.
   bool isFavoriteLocally(String wallpaperId) {
-    return _localFavoritesBox.values.contains(wallpaperId);
+    return _localFavoritesBox.containsKey(wallpaperId) || 
+        _localFavoritesBox.values.contains(wallpaperId);
   }
 
   /// Toggle favorite status

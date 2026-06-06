@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:lumiowalls/features/downloads/view/downloads_screen.dart';
+import 'package:lumiowalls/features/favorites/view/favorites_screen.dart';
 import 'package:lumiowalls/features/home/widgets/wallpaper_horizontal_section.dart';
 import '../../auth/bloc/auth_cubit.dart';
 import '../../auth/view/login_screen.dart';
-import '../../favorites/view/favorites_screen.dart';
-import '../../favorites/bloc/favorites_cubit.dart';
-import '../../downloads/view/downloads_screen.dart';
-import '../bloc/auto_wallpaper_cubit.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -55,10 +53,6 @@ class ProfilePage extends StatelessWidget {
 
         // My Content Section
         _buildMyContentSection(context),
-        const SizedBox(height: 24),
-
-        // Auto Wallpaper Section
-        _buildAutoWallpaperSection(context),
         const SizedBox(height: 24),
 
         WallpaperHorizontalSection(
@@ -166,10 +160,6 @@ class ProfilePage extends StatelessWidget {
           ),
         ),
 
-        const SizedBox(height: 24),
-
-        // Auto Wallpaper Section
-        _buildAutoWallpaperSection(context),
         const SizedBox(height: 24),
 
         // My Content Section (Always Visible)
@@ -373,159 +363,6 @@ class ProfilePage extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  /// Build auto wallpaper section
-  Widget _buildAutoWallpaperSection(BuildContext context) {
-    return BlocBuilder<AutoWallpaperCubit, AutoWallpaperState>(
-      builder: (context, state) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildSectionHeader(context, 'Auto Wallpaper Settings'),
-            const SizedBox(height: 12),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Container(
-                // padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).cardColor,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: SwitchListTile(
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 6,
-                  ),
-                  title: Text(
-                    'Auto Change Wallpaper',
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  subtitle: Text(
-                    'Downloads up to 10 random favorites to change daily',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(
-                        context,
-                      ).textTheme.bodyMedium?.color?.withValues(alpha: 0.7),
-                    ),
-                  ),
-                  value: state.isEnabled,
-                  activeColor: Theme.of(context).colorScheme.primary,
-                  onChanged: (value) async {
-                    if (value) {
-                      // Check if there are favorites
-                      final favoritesCount = context
-                          .read<FavoritesCubit>()
-                          .state
-                          .favoriteIds
-                          .length;
-                      if (favoritesCount == 0) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Please add some static wallpapers to your favorites first.',
-                            ),
-                          ),
-                        );
-                        return;
-                      }
-
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Downloading up to 10 random wallpapers locally for auto change...',
-                          ),
-                          duration: Duration(seconds: 3),
-                        ),
-                      );
-
-                      // Ask user for screen target
-                      final target = await _showTargetScreenDialog(context);
-                      if (target != null) {
-                        if (context.mounted) {
-                          await context
-                              .read<AutoWallpaperCubit>()
-                              .updateTargetScreen(target);
-                        }
-                      } else {
-                        // User cancelled
-                        return;
-                      }
-                    }
-                    if (context.mounted) {
-                      context.read<AutoWallpaperCubit>().toggleEnabled(value);
-                    }
-                  },
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Future<int?> _showTargetScreenDialog(BuildContext context) {
-    return showModalBottomSheet<int>(
-      context: context,
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      builder: (btmContext) => Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        padding: const EdgeInsets.symmetric(vertical: 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: Icon(
-                Icons.home,
-                color: Theme.of(btmContext).colorScheme.onSurface,
-              ),
-              title: Text(
-                'Set as Home Screen',
-                style: TextStyle(
-                  color: Theme.of(btmContext).textTheme.bodyLarge?.color,
-                ),
-              ),
-              onTap: () => Navigator.pop(btmContext, 1),
-            ),
-            ListTile(
-              leading: Icon(
-                Icons.lock,
-                color: Theme.of(btmContext).colorScheme.onSurface,
-              ),
-              title: Text(
-                'Set as Lock Screen',
-                style: TextStyle(
-                  color: Theme.of(btmContext).textTheme.bodyLarge?.color,
-                ),
-              ),
-              onTap: () => Navigator.pop(btmContext, 2),
-            ),
-            ListTile(
-              leading: Icon(
-                Icons.phone_android,
-                color: Theme.of(btmContext).colorScheme.onSurface,
-              ),
-              title: Text(
-                'Set Both',
-                style: TextStyle(
-                  color: Theme.of(btmContext).textTheme.bodyLarge?.color,
-                ),
-              ),
-              onTap: () => Navigator.pop(
-                btmContext,
-                3,
-              ), // WallpaperManagerPlus.bothScreens
-            ),
-          ],
-        ),
       ),
     );
   }

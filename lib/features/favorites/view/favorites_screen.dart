@@ -28,7 +28,7 @@ class FavoritesScreen extends StatelessWidget {
           }
 
           return FutureBuilder<List<WallpaperModel>>(
-            future: _loadFavoriteWallpapers(state.favoriteIds),
+            future: _loadFavoriteWallpapers(context, state.favoriteIds),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
@@ -68,26 +68,23 @@ class FavoritesScreen extends StatelessWidget {
     );
   }
 
-  /// Load favorite wallpapers from Firestore
+  /// Load favorite wallpapers from Firestore in parallel
   Future<List<WallpaperModel>> _loadFavoriteWallpapers(
+    BuildContext context,
     List<String> favoriteIds,
   ) async {
-    final repository = WallpaperRepository();
-    final wallpapers = <WallpaperModel>[];
-
-    for (final id in favoriteIds) {
+    final repository = context.read<WallpaperRepository>();
+    final futures = favoriteIds.map((id) async {
       try {
-        final wallpaper = await repository.getWallpaperById(id);
-        if (wallpaper != null) {
-          wallpapers.add(wallpaper);
-        }
+        return await repository.getWallpaperById(id);
       } catch (e) {
         // Skip wallpapers that fail to load
-        continue;
+        return null;
       }
-    }
+    });
 
-    return wallpapers;
+    final results = await Future.wait(futures);
+    return results.whereType<WallpaperModel>().toList();
   }
 
   /// Build empty state

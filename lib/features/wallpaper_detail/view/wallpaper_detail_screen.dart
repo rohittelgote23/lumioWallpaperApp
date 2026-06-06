@@ -659,6 +659,39 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
                       ),
                     ),
                   ],
+
+                  // Loading Indicator Overlay
+                  BlocBuilder<SetWallpaperCubit, SetWallpaperState>(
+                    builder: (context, state) {
+                      if (state is SetWallpaperLoading) {
+                        return Positioned.fill(
+                          child: Container(
+                            color: Colors.black.withValues(alpha: 0.7),
+                            child: const Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  CircularProgressIndicator(
+                                    color: Colors.white,
+                                  ),
+                                  SizedBox(height: 16),
+                                  Text(
+                                    'Setting Wallpaper...',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      }
+                      return const SizedBox.shrink();
+                    },
+                  ),
                 ],
               );
             },
@@ -729,23 +762,7 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
   ) async {
     if (!mounted) return;
 
-    // 1. Get file
-    final file = await cubit.getWallpaperFile(url);
-    if (file == null) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to download image to set wallpaper'),
-          ),
-        );
-      }
-      return;
-    }
-
-    // 2. Set Wallpaper directly from file (no cropping)
-    if (mounted) {
-      cubit.setWallpaperFromFile(file.path, location, context: context);
-    }
+    cubit.setWallpaper(url, location, context: context);
   }
 
   Widget _buildLockScreenIconButton(IconData icon) {

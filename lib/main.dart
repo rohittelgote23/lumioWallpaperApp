@@ -15,8 +15,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'core/bloc/theme/theme_cubit.dart';
 import 'core/bloc/theme/theme_state.dart';
 import 'features/onboarding/view/onboarding_screen.dart';
-import 'core/services/background_task_service.dart';
-import 'features/profile/bloc/auto_wallpaper_cubit.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -38,8 +37,6 @@ void main() async {
   final prefs = await SharedPreferences.getInstance();
   final isFirstTime = prefs.getBool('isFirstTime') ?? true;
 
-  // Initialize Background Task Service
-  await BackgroundTaskService.initialize();
 
   runApp(
     MyApp(
@@ -94,8 +91,6 @@ class MyApp extends StatelessWidget {
                   ..add(LoadCategories()),
           ),
 
-          // Auto Wallpaper Cubit (app-wide)
-          BlocProvider(create: (context) => AutoWallpaperCubit()),
         ],
         child: Builder(
           builder: (context) {

@@ -1,3 +1,5 @@
+// import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:wallpaper_manager_plus/wallpaper_manager_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
@@ -22,45 +24,22 @@ class WallpaperService {
         if (screenWidth > 0 && screenHeight > 0) {
           final targetRatio = screenWidth / screenHeight;
 
-          // Decode image
+          // Read bytes to pass to background isolate
           final bytes = await file.readAsBytes();
-          final image = img.decodeImage(bytes);
 
-          if (image != null) {
-            final imgRatio = image.width / image.height;
-            int targetWidth = image.width;
-            int targetHeight = image.height;
+          // Offload decode, crop, and encode to background isolate
+          final croppedBytes = await compute(_cropImageTask, {
+            'bytes': bytes,
+            'targetRatio': targetRatio,
+          });
 
-            // Calculate new dimensions to match phone aspect ratio while maximizing resolution
-            if (imgRatio > targetRatio) {
-              // Image is wider than the screen => crop width
-              targetWidth = (image.height * targetRatio).round();
-            } else {
-              // Image is taller than the screen => crop height
-              targetHeight = (image.width / targetRatio).round();
-            }
-
-            // Calculate center offsets
-            final offsetX = (image.width - targetWidth) ~/ 2;
-            final offsetY = (image.height - targetHeight) ~/ 2;
-
-            // Crop
-            final croppedImage = img.copyCrop(
-              image,
-              x: offsetX,
-              y: offsetY,
-              width: targetWidth,
-              height: targetHeight,
-            );
-
+          if (croppedBytes != null) {
             // Save to temp file
             final tempDir = await getTemporaryDirectory();
             final tempPath =
                 '${tempDir.path}/cropped_wallpaper_${DateTime.now().millisecondsSinceEpoch}.jpg';
             final croppedFile = File(tempPath);
-            await croppedFile.writeAsBytes(
-              img.encodeJpg(croppedImage, quality: 100),
-            );
+            await croppedFile.writeAsBytes(croppedBytes);
 
             // Use the perfectly cropped file instead
             file = croppedFile;
@@ -78,4 +57,43 @@ class WallpaperService {
   }
 
   // Live wallpaper handling removed as per request
+}
+
+/// Helper function to perform CPU-intensive cropping in a background isolate
+List<int>? _cropImageTask(Map<String, dynamic> params) {
+  final Uint8List bytes = params['bytes'];
+  final double targetRatio = params['targetRatio'];
+
+  // Decode image
+  final image = img.decodeImage(bytes);
+  if (image == null) return null;
+
+  final imgRatio = image.width / image.height;
+  int targetWidth = image.width;
+  int targetHeight = image.height;
+
+  // Calculate new dimensions to match phone aspect ratio while maximizing resolution
+  if (imgRatio > targetRatio) {
+    // Image is wider than the screen => crop width
+    targetWidth = (image.height * targetRatio).round();
+  } else {
+    // Image is taller than the screen => crop height
+    targetHeight = (image.width / targetRatio).round();
+  }
+
+  // Calculate center offsets
+  final offsetX = (image.width - targetWidth) ~/ 2;
+  final offsetY = (image.height - targetHeight) ~/ 2;
+
+  // Crop
+  final croppedImage = img.copyCrop(
+    image,
+    x: offsetX,
+    y: offsetY,
+    width: targetWidth,
+    height: targetHeight,
+  );
+
+  // Encode
+  return img.encodeJpg(croppedImage, quality: 100);
 }

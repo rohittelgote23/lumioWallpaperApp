@@ -31,7 +31,7 @@ class SetWallpaperCubit extends Cubit<SetWallpaperState> {
       final result = await _wallpaperService.setStaticWallpaper(
         filePath: file.path,
         location: location,
-        context: context,
+        // context: context,
       );
 
       emit(SetWallpaperSuccess(result));

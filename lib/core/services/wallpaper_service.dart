@@ -9,41 +9,33 @@ import 'dart:io';
 class WallpaperService {
   Future<String> setStaticWallpaper({
     required String filePath,
-    required int
-    location, // WallpaperManagerPlus.homeScreen, lockScreen, bothScreens
-    BuildContext? context,
+    required int location, // WallpaperManagerPlus.homeScreen, lockScreen, bothScreens
+    double? targetRatio,
   }) async {
     try {
       File file = File(filePath);
 
-      // If we have context, try to perfectly center-crop the image to the device's screen aspect ratio
-      if (context != null) {
-        final screenWidth = MediaQuery.of(context).size.width;
-        final screenHeight = MediaQuery.of(context).size.height;
+      // If we have targetRatio, perfectly center-crop the image to match the device aspect ratio
+      if (targetRatio != null && targetRatio > 0) {
+        // Read bytes to pass to background isolate
+        final bytes = await file.readAsBytes();
 
-        if (screenWidth > 0 && screenHeight > 0) {
-          final targetRatio = screenWidth / screenHeight;
+        // Offload decode, crop, and encode to background isolate
+        final croppedBytes = await compute(_cropImageTask, {
+          'bytes': bytes,
+          'targetRatio': targetRatio,
+        });
 
-          // Read bytes to pass to background isolate
-          final bytes = await file.readAsBytes();
+        if (croppedBytes != null) {
+          // Save to temp file
+          final tempDir = await getTemporaryDirectory();
+          final tempPath =
+              '${tempDir.path}/cropped_wallpaper_${DateTime.now().millisecondsSinceEpoch}.jpg';
+          final croppedFile = File(tempPath);
+          await croppedFile.writeAsBytes(croppedBytes);
 
-          // Offload decode, crop, and encode to background isolate
-          final croppedBytes = await compute(_cropImageTask, {
-            'bytes': bytes,
-            'targetRatio': targetRatio,
-          });
-
-          if (croppedBytes != null) {
-            // Save to temp file
-            final tempDir = await getTemporaryDirectory();
-            final tempPath =
-                '${tempDir.path}/cropped_wallpaper_${DateTime.now().millisecondsSinceEpoch}.jpg';
-            final croppedFile = File(tempPath);
-            await croppedFile.writeAsBytes(croppedBytes);
-
-            // Use the perfectly cropped file instead
-            file = croppedFile;
-          }
+          // Use the perfectly cropped file instead
+          file = croppedFile;
         }
       }
 

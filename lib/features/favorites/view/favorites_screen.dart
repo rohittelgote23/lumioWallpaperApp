@@ -56,6 +56,7 @@ class FavoritesScreen extends StatelessWidget {
                 itemBuilder: (context, index) {
                   return WallpaperThumbnail(
                     wallpaper: wallpapers[index],
+                    wallpapers: wallpapers,
                     sectionId: 'favorites',
                     index: index,
                   );

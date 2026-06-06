@@ -63,6 +63,7 @@ class BestOfMonthSection extends StatelessWidget {
           ),
           child: WallpaperThumbnail(
             wallpaper: wallpapers[index],
+            wallpapers: wallpapers,
             width: 180, // Wider cards
             height: 200,
             sectionId: 'best_of_month',

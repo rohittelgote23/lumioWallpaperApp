@@ -12,6 +12,7 @@ import '../../wallpaper_detail/view/wallpaper_detail_screen.dart';
 /// Navigates to wallpaper detail on tap
 class WallpaperThumbnail extends StatelessWidget {
   final WallpaperModel wallpaper;
+  final List<WallpaperModel>? wallpapers;
   final double? width;
   final double? height;
   final double aspectRatio;
@@ -21,6 +22,7 @@ class WallpaperThumbnail extends StatelessWidget {
   const WallpaperThumbnail({
     super.key,
     required this.wallpaper,
+    this.wallpapers,
     this.width,
     this.height,
     this.aspectRatio = 9 / 16,
@@ -37,8 +39,11 @@ class WallpaperThumbnail extends StatelessWidget {
       onTap: () {
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (_) =>
-                WallpaperDetailScreen(wallpaper: wallpaper, heroTag: heroTag),
+            builder: (_) => WallpaperDetailScreen(
+              wallpapers: wallpapers ?? [wallpaper],
+              initialIndex: index ?? 0,
+              heroTag: heroTag,
+            ),
           ),
         );
       },

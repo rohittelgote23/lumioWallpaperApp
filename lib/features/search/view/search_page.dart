@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -32,6 +33,18 @@ class SearchView extends StatefulWidget {
 class _SearchViewState extends State<SearchView> {
   late final TextEditingController _searchController;
   final FocusNode _focusNode = FocusNode();
+
+  final List<String> _popularTags = [
+    'Minimalist',
+    'Anime',
+    'Space',
+    'Nature',
+    'Dark',
+    'Cars',
+    'Aesthetic',
+    'Simple',
+    'Premium',
+  ];
 
   @override
   void initState() {
@@ -98,12 +111,10 @@ class _SearchViewState extends State<SearchView> {
                 decoration: InputDecoration(
                   hintText: 'Search for wallpapers...',
                   hintStyle: GoogleFonts.outfit(color: theme.hintColor),
-
                   prefixIcon: Icon(
                     Icons.search,
                     color: theme.colorScheme.primary,
                   ),
-
                   suffixIcon: _searchController.text.isNotEmpty
                       ? IconButton(
                           icon: Icon(Icons.close, color: theme.iconTheme.color),
@@ -125,7 +136,7 @@ class _SearchViewState extends State<SearchView> {
                     borderRadius: BorderRadius.circular(100),
                     borderSide: BorderSide(
                       color: theme.colorScheme.primary,
-                      width: 1.2, // Slightly thicker on focus (looks premium)
+                      width: 1.2,
                     ),
                   ),
                   border: OutlineInputBorder(
@@ -140,7 +151,6 @@ class _SearchViewState extends State<SearchView> {
                     vertical: 12,
                   ),
                 ),
-
                 onSubmitted: (query) {
                   context.read<SearchCubit>().search(query);
                 },
@@ -153,99 +163,7 @@ class _SearchViewState extends State<SearchView> {
               ),
             ),
 
-            const SizedBox(height: 10),
-
-            // Recent Section (Always visible if history exists)
-            BlocBuilder<SearchCubit, SearchState>(
-              builder: (context, state) {
-                if (state.history.isEmpty) {
-                  return const SizedBox.shrink();
-                }
-
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Recent',
-                            style: GoogleFonts.outfit(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: theme.textTheme.bodyLarge?.color,
-                            ),
-                          ),
-                          TextButton(
-                            onPressed: () {
-                              context.read<SearchCubit>().clearHistory();
-                            },
-                            child: Text(
-                              'Clear All',
-                              style: GoogleFonts.outfit(
-                                color: theme.colorScheme.primary,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 0),
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Row(
-                        children: state.history.map((tag) {
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 12),
-                            child: InkWell(
-                              onTap: () {
-                                _searchController.text = tag;
-                                context.read<SearchCubit>().search(tag);
-                              },
-                              borderRadius: BorderRadius.circular(20),
-                              child: Chip(
-                                label: Text(
-                                  tag,
-                                  style: GoogleFonts.outfit(
-                                    color: theme.textTheme.bodyMedium?.color,
-                                  ),
-                                ),
-                                backgroundColor: theme.cardColor,
-                                deleteIcon: Icon(
-                                  Icons.close,
-                                  size: 16,
-                                  color: theme.iconTheme.color?.withValues(
-                                    alpha: 0.5,
-                                  ),
-                                ),
-                                onDeleted: () {
-                                  context.read<SearchCubit>().removeFromHistory(
-                                    tag,
-                                  );
-                                },
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(20),
-                                  side: BorderSide(
-                                    color: theme.dividerColor.withValues(
-                                      alpha: 0.1,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                  ],
-                );
-              },
-            ),
+            const SizedBox(height: 20),
 
             // Search Results
             Expanded(
@@ -290,13 +208,201 @@ class _SearchViewState extends State<SearchView> {
                       itemBuilder: (context, index) {
                         return WallpaperThumbnail(
                           wallpaper: state.wallpapers[index],
+                          wallpapers: state.wallpapers,
                           sectionId: 'search',
                           index: index,
                         );
                       },
                     );
                   }
-                  return const SizedBox.shrink();
+
+                  // state is SearchInitial: Show search history and popular tags
+                  return SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (state.history.isNotEmpty) ...[
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 24),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Recent Searches',
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: theme.textTheme.bodyLarge?.color,
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: () {
+                                    context.read<SearchCubit>().clearHistory();
+                                  },
+                                  child: Text(
+                                    'Clear All',
+                                    style: GoogleFonts.outfit(
+                                      color: theme.colorScheme.primary,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Row(
+                              children: state.history.map((tag) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(right: 12),
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: theme.cardColor,
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(
+                                        color: theme.dividerColor.withValues(
+                                          alpha: 0.1,
+                                        ),
+                                      ),
+                                    ),
+                                    child: IntrinsicWidth(
+                                      child: Row(
+                                        children: [
+                                          InkWell(
+                                            onTap: () {
+                                              _searchController.text = tag;
+                                              context
+                                                  .read<SearchCubit>()
+                                                  .search(tag);
+                                              _focusNode.unfocus();
+                                              setState(() {});
+                                            },
+                                            borderRadius:
+                                                const BorderRadius.only(
+                                                  topLeft: Radius.circular(20),
+                                                  bottomLeft: Radius.circular(
+                                                    20,
+                                                  ),
+                                                ),
+                                            child: Padding(
+                                              padding:
+                                                  const EdgeInsets.fromLTRB(
+                                                    16,
+                                                    8,
+                                                    8,
+                                                    8,
+                                                  ),
+                                              child: Text(
+                                                tag,
+                                                style: GoogleFonts.outfit(
+                                                  color: theme
+                                                      .textTheme
+                                                      .bodyMedium
+                                                      ?.color,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          InkWell(
+                                            onTap: () {
+                                              context
+                                                  .read<SearchCubit>()
+                                                  .removeFromHistory(tag);
+                                            },
+                                            borderRadius:
+                                                const BorderRadius.only(
+                                                  topRight: Radius.circular(20),
+                                                  bottomRight: Radius.circular(
+                                                    20,
+                                                  ),
+                                                ),
+                                            child: Padding(
+                                              padding:
+                                                  const EdgeInsets.fromLTRB(
+                                                    4,
+                                                    8,
+                                                    12,
+                                                    8,
+                                                  ),
+                                              child: Icon(
+                                                Icons.close,
+                                                size: 16,
+                                                color: theme.iconTheme.color
+                                                    ?.withValues(alpha: 0.5),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                        ],
+
+                        // Popular Tags Section
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: Text(
+                            'Popular Tags',
+                            style: GoogleFonts.outfit(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: theme.textTheme.bodyLarge?.color,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: Wrap(
+                            spacing: 10,
+                            runSpacing: 10,
+                            children: _popularTags.map((tag) {
+                              return InkWell(
+                                onTap: () {
+                                  _searchController.text = tag;
+                                  context.read<SearchCubit>().search(tag);
+                                  _focusNode.unfocus();
+                                  setState(() {});
+                                },
+                                borderRadius: BorderRadius.circular(20),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: theme.cardColor,
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: theme.colorScheme.primary
+                                          .withValues(alpha: 0.15),
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    tag,
+                                    style: GoogleFonts.outfit(
+                                      color: theme.textTheme.bodyMedium?.color,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
                 },
               ),
             ),

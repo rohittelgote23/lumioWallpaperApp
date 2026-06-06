@@ -82,7 +82,7 @@ class CategoryBloc extends Bloc<CategoryEvent, CategoryState> {
     Emitter<CategoryState> emit,
   ) async {
     try {
-      final categories = await _repository.getCategories();
+      final categories = await _repository.getCategories(forceRefresh: true);
       emit(CategoryLoaded(categories));
     } catch (e) {
       emit(CategoryError(e.toString()));

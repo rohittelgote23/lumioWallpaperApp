@@ -12,12 +12,18 @@ class CategoryRepository {
   CategoryRepository({FirebaseFirestore? firestore})
     : _firestore = firestore ?? FirebaseFirestore.instance;
 
+  List<CategoryModel>? _cachedCategories;
+
   /// Get all active categories ordered by the 'order' field
   ///
   /// Returns a list of categories sorted by their order value
   /// Only returns categories where isActive is true
-  Future<List<CategoryModel>> getCategories() async {
+  Future<List<CategoryModel>> getCategories({bool forceRefresh = false}) async {
     try {
+      if (!forceRefresh && _cachedCategories != null) {
+        return _cachedCategories!;
+      }
+
       final querySnapshot = await _firestore
           .collection(AppConstants.categoriesCollection)
           // .where('isActive', isEqualTo: true) // Fetch all to allow virtual/inactive in slider
@@ -29,6 +35,7 @@ class CategoryRepository {
 
       categories.sort((a, b) => a.order.compareTo(b.order));
 
+      _cachedCategories = categories;
       return categories;
     } catch (e) {
       throw Exception('Failed to fetch categories: $e');

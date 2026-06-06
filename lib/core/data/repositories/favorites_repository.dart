@@ -8,6 +8,7 @@ class FavoritesRepository {
   late Box<String> _localFavoritesBox;
   final FirebaseAuth _firebaseAuth;
   final FirebaseFirestore _firestore;
+  List<String>? _cachedFavoriteIds;
 
   FavoritesRepository({
     FirebaseAuth? firebaseAuth,
@@ -30,20 +31,28 @@ class FavoritesRepository {
 
   /// Get all favorite wallpaper IDs
   Future<List<String>> getFavorites() async {
+    if (_cachedFavoriteIds != null) {
+      return _cachedFavoriteIds!;
+    }
+
     if (_userId != null) {
       try {
         final doc = await _firestore.collection('users').doc(_userId).get();
         if (doc.exists && doc.data()!.containsKey('favorites')) {
-          return List<String>.from(doc.data()!['favorites']);
+          _cachedFavoriteIds = List<String>.from(doc.data()!['favorites']);
+          return _cachedFavoriteIds!;
         }
-        return [];
+        _cachedFavoriteIds = [];
+        return _cachedFavoriteIds!;
       } catch (e) {
         // Fallback to local or empty if offline/error
         // print('Error fetching cloud favorites: $e');
-        return _localFavoritesBox.values.toList();
+        _cachedFavoriteIds = _localFavoritesBox.values.toList();
+        return _cachedFavoriteIds!;
       }
     } else {
-      return _localFavoritesBox.values.toList();
+      _cachedFavoriteIds = _localFavoritesBox.values.toList();
+      return _cachedFavoriteIds!;
     }
   }
 
@@ -54,11 +63,18 @@ class FavoritesRepository {
         await _firestore.collection('users').doc(_userId).set({
           'favorites': FieldValue.arrayUnion([wallpaperId]),
         }, SetOptions(merge: true));
-        return true;
       } else {
         await _localFavoritesBox.put(wallpaperId, wallpaperId);
-        return true;
       }
+
+      // Update in-memory cache directly
+      if (_cachedFavoriteIds != null && !_cachedFavoriteIds!.contains(wallpaperId)) {
+        _cachedFavoriteIds!.add(wallpaperId);
+      } else if (_cachedFavoriteIds == null) {
+        _cachedFavoriteIds = [wallpaperId];
+      }
+
+      return true;
     } catch (e) {
       throw Exception('Failed to add favorite: $e');
     }
@@ -67,29 +83,36 @@ class FavoritesRepository {
   /// Remove a wallpaper from favorites
   Future<bool> removeFavorite(String wallpaperId) async {
     try {
+      bool success = false;
       if (_userId != null) {
         await _firestore.collection('users').doc(_userId).update({
           'favorites': FieldValue.arrayRemove([wallpaperId]),
         });
-        return true;
+        success = true;
       } else {
         if (_localFavoritesBox.containsKey(wallpaperId)) {
           await _localFavoritesBox.delete(wallpaperId);
-          return true;
-        }
-        
-        // Fallback for legacy database entries using auto-increment integer keys
-        final key = _localFavoritesBox.keys.firstWhere(
-          (key) => _localFavoritesBox.get(key) == wallpaperId,
-          orElse: () => null,
-        );
+          success = true;
+        } else {
+          // Fallback for legacy database entries using auto-increment integer keys
+          final key = _localFavoritesBox.keys.firstWhere(
+            (key) => _localFavoritesBox.get(key) == wallpaperId,
+            orElse: () => null,
+          );
 
-        if (key != null) {
-          await _localFavoritesBox.delete(key);
-          return true;
+          if (key != null) {
+            await _localFavoritesBox.delete(key);
+            success = true;
+          }
         }
-        return false;
       }
+
+      // Update in-memory cache directly
+      if (success) {
+        _cachedFavoriteIds?.remove(wallpaperId);
+      }
+
+      return success;
     } catch (e) {
       throw Exception('Failed to remove favorite: $e');
     }
@@ -140,6 +163,7 @@ class FavoritesRepository {
       // If we want to truly "move" them, we should clear local.
       // Let's clear local to avoid confusion when logging out (user expects their personal favorites to be gone from guest mode).
       await _localFavoritesBox.clear();
+      _cachedFavoriteIds = null;
     } catch (e) {
       // print('Sync failed: $e');
     }
@@ -154,6 +178,7 @@ class FavoritesRepository {
     } else {
       await _localFavoritesBox.clear();
     }
+    _cachedFavoriteIds = [];
   }
 
   int getFavoritesCount() {

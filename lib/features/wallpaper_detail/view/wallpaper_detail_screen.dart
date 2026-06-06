@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:video_player/video_player.dart';
@@ -12,17 +13,21 @@ import '../bloc/set_wallpaper_state.dart';
 import '../../favorites/bloc/favorites_cubit.dart';
 import '../../../core/data/repositories/wallpaper_repository.dart';
 import '../../auth/bloc/auth_cubit.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Wallpaper Detail Screen
 ///
-/// Displays full wallpaper preview with Info, Save, and Fav buttons
+/// Displays wallpaper previews in a vertical swipable PageView.
+/// Supports Info, Save, and Fav buttons for the active wallpaper.
 class WallpaperDetailScreen extends StatefulWidget {
-  final WallpaperModel wallpaper;
+  final List<WallpaperModel> wallpapers;
+  final int initialIndex;
   final String? heroTag;
 
   const WallpaperDetailScreen({
     super.key,
-    required this.wallpaper,
+    required this.wallpapers,
+    required this.initialIndex,
     this.heroTag,
   });
 
@@ -31,57 +36,75 @@ class WallpaperDetailScreen extends StatefulWidget {
 }
 
 class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
+  late int _currentIndex;
+  late PageController _pageController;
   final LayerLink _layerLink = LayerLink();
   OverlayEntry? _overlayEntry;
-  CachedVideoPlayerPlus? _videoController;
-  bool _hasError = false;
-  String _errorMessage = '';
-  bool _isVideoInitialized = false;
   bool _isPreviewMode = false;
+  bool _showSwipeHint = false;
+  Timer? _swipeHintTimer;
+  bool _hasSeenSwipeHint = true; // Default to true until loaded
+
+  WallpaperModel get _currentWallpaper => widget.wallpapers[_currentIndex];
 
   @override
   void initState() {
     super.initState();
-    // Increment view count
-    WallpaperRepository().incrementViews(widget.wallpaper.id);
-
-    if (widget.wallpaper.isVideo && widget.wallpaper.hasValidUrl) {
-      _videoController =
-          CachedVideoPlayerPlus.networkUrl(Uri.parse(widget.wallpaper.fullUrl))
-            ..initialize()
-                .then((_) {
-                  // Ensure the first frame is shown after the video is initialized, even before the play button has been pressed.
-                  if (mounted) {
-                    setState(() {
-                      _isVideoInitialized = true;
-                    });
-                    _videoController!.controller.setVolume(0); // Mute video
-                    _videoController!.controller.play();
-                    _videoController!.controller.setLooping(true);
-                  }
-                })
-                .catchError((error) {
-                  // Ensure the first frame is shown after the video is initialized
-                  if (mounted) {
-                    setState(() {
-                      _hasError = true;
-                      _errorMessage = 'Failed to load video';
-                    });
-                  }
-                });
-    } else {
-      if (widget.wallpaper.isVideo && !widget.wallpaper.hasValidUrl) {
-        _hasError = true;
-        _errorMessage = 'Invalid video URL';
-      }
-    }
+    _currentIndex = widget.initialIndex;
+    _pageController = PageController(initialPage: widget.initialIndex);
+    _checkSwipeHintStatus();
   }
 
   @override
   void dispose() {
     _removeInfoPopup();
-    _videoController?.dispose();
+    _pageController.dispose();
+    _swipeHintTimer?.cancel();
     super.dispose();
+  }
+
+  Future<void> _checkSwipeHintStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    final hasSeen = prefs.getBool('has_seen_swipe_hint') ?? false;
+    if (mounted) {
+      setState(() {
+        _hasSeenSwipeHint = hasSeen;
+      });
+      if (!hasSeen) {
+        _startSwipeHintTimer();
+      }
+    }
+  }
+
+  Future<void> _markSwipeHintAsSeen() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('has_seen_swipe_hint', true);
+    if (mounted) {
+      setState(() {
+        _hasSeenSwipeHint = true;
+        _showSwipeHint = false;
+      });
+    }
+    _swipeHintTimer?.cancel();
+  }
+
+  void _startSwipeHintTimer() {
+    _swipeHintTimer?.cancel();
+    if (mounted) {
+      setState(() {
+        _showSwipeHint = false;
+      });
+    }
+    // Only show hint if the user has never swiped, and there is a next wallpaper to scroll to
+    if (!_hasSeenSwipeHint && _currentIndex < widget.wallpapers.length - 1) {
+      _swipeHintTimer = Timer(const Duration(seconds: 5), () {
+        if (mounted) {
+          setState(() {
+            _showSwipeHint = true;
+          });
+        }
+      });
+    }
   }
 
   void _removeInfoPopup() {
@@ -109,14 +132,11 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
             ),
             // Popup
             Positioned(
-              width: 200, // Reduced width
+              width: 200,
               child: CompositedTransformFollower(
                 link: _layerLink,
                 showWhenUnlinked: false,
-                offset: const Offset(
-                  -60,
-                  -100,
-                ), // Aligned to start of button, moved up
+                offset: const Offset(-60, -100),
                 child: Material(
                   elevation: 8,
                   borderRadius: BorderRadius.circular(12),
@@ -137,8 +157,8 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          widget.wallpaper.info.isNotEmpty
-                              ? widget.wallpaper.info
+                          _currentWallpaper.info.isNotEmpty
+                              ? _currentWallpaper.info
                               : 'No information available.',
                           style: Theme.of(context).textTheme.bodySmall
                               ?.copyWith(color: Colors.black87),
@@ -158,7 +178,7 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
   }
 
   bool _isPremiumUnlocked(BuildContext context) {
-    if (!widget.wallpaper.isPremium) return true;
+    if (!_currentWallpaper.isPremium) return true;
     final state = context.read<AuthCubit>().state;
     if (state is Authenticated) {
       return state.user.subscription.isPremium;
@@ -203,7 +223,6 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
             ),
             onPressed: () {
               Navigator.pop(ctx);
-              // Navigate to subscription screen
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Premium features coming soon!')),
               );
@@ -225,14 +244,13 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
         BlocProvider(
           create: (context) => DownloadCubit(
             wallpaperRepository: context.read<WallpaperRepository>(),
-          )..checkDownloadStatus(widget.wallpaper.id),
+          )..checkDownloadStatus(_currentWallpaper.id),
         ),
         BlocProvider(create: (context) => SetWallpaperCubit()),
       ],
       child: BlocListener<SetWallpaperCubit, SetWallpaperState>(
         listener: (context, state) {
           if (state is SetWallpaperSuccess) {
-            // Navigator.pop(context); // Keep the screen open
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(state.message),
@@ -240,15 +258,12 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
               ),
             );
           } else if (state is SetWallpaperError) {
-            // Navigator.pop(context); // Keep the screen open
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(state.message),
                 backgroundColor: Colors.red,
               ),
             );
-          } else if (state is SetWallpaperLoading) {
-            // Optional: Show loading indicator
           }
         },
         child: Scaffold(
@@ -259,67 +274,61 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
               return Stack(
                 fit: StackFit.expand,
                 children: [
-                  // Wallpaper Preview
-                  if (_hasError)
-                    Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(
-                            Icons.error_outline,
-                            color: Colors.white,
-                            size: 48,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            _errorMessage.isNotEmpty
-                                ? _errorMessage
-                                : 'Error loading media',
-                            style: const TextStyle(color: Colors.white),
-                          ),
-                        ],
-                      ),
-                    )
-                  else if (widget.wallpaper.isVideo)
-                    if (_videoController != null && _isVideoInitialized)
-                      SizedBox.expand(
-                        child: FittedBox(
-                          fit: BoxFit.cover,
-                          child: SizedBox(
-                            width:
-                                _videoController!.controller.value.size.width,
-                            height:
-                                _videoController!.controller.value.size.height,
-                            child: VideoPlayer(_videoController!.controller),
-                          ),
-                        ),
-                      )
-                    else
-                      const Center(
-                        child: CircularProgressIndicator(color: Colors.white),
-                      )
-                  else if (widget.wallpaper.hasValidUrl)
-                    Hero(
-                      tag: widget.heroTag ?? 'wallpaper_${widget.wallpaper.id}',
-                      child: CachedNetworkImage(
-                        imageUrl: widget.wallpaper.fullUrl,
-                        fit: BoxFit.cover,
-                        placeholder: (context, url) => const Center(
-                          child: CircularProgressIndicator(color: Colors.white),
-                        ),
-                      ),
-                    ),
-
-                  Positioned.fill(
-                    child: GestureDetector(
-                      onTap: () {
+                  // Swipable Vertical PageView for Wallpapers
+                  NotificationListener<ScrollNotification>(
+                    onNotification: (notification) {
+                      if (notification is ScrollStartNotification ||
+                          notification is ScrollUpdateNotification) {
+                        _startSwipeHintTimer();
+                      }
+                      return false;
+                    },
+                    child: PageView.builder(
+                      controller: _pageController,
+                      scrollDirection: Axis.vertical,
+                      onPageChanged: (index) {
                         setState(() {
-                          _isPreviewMode = !_isPreviewMode;
+                          _currentIndex = index;
                         });
+                        _removeInfoPopup();
+                        _startSwipeHintTimer();
+                        context.read<DownloadCubit>().checkDownloadStatus(
+                          _currentWallpaper.id,
+                        );
+
+                        // Mark as seen on their first vertical swipe
+                        if (!_hasSeenSwipeHint &&
+                            index != widget.initialIndex) {
+                          _markSwipeHintAsSeen();
+                        }
                       },
-                      behavior: HitTestBehavior.translucent,
+                      itemCount: widget.wallpapers.length,
+                      itemBuilder: (context, index) {
+                        final wallpaper = widget.wallpapers[index];
+                        return WallpaperPageContent(
+                          key: ValueKey(wallpaper.id),
+                          wallpaper: wallpaper,
+                          heroTag: widget.heroTag,
+                          isInitial: index == widget.initialIndex,
+                          onTap: () {
+                            setState(() {
+                              _isPreviewMode = !_isPreviewMode;
+                            });
+                            _startSwipeHintTimer();
+                          },
+                        );
+                      },
                     ),
                   ),
+
+                  // Swipe Up Hint overlay
+                  if (_showSwipeHint && !_isPreviewMode)
+                    Positioned(
+                      bottom: 110,
+                      left: 0,
+                      right: 0,
+                      child: const Center(child: SwipeUpHint()),
+                    ),
 
                   if (!_isPreviewMode) ...[
                     // Top Bar (Back, Share)
@@ -359,7 +368,7 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.8),
                           borderRadius: BorderRadius.circular(30),
-                          boxShadow: [
+                          boxShadow: const [
                             BoxShadow(
                               color: Colors.black26,
                               blurRadius: 10,
@@ -377,7 +386,7 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
                             // Premium Locked State
                             if (!_isPremiumUnlocked(context)) ...[
                               _buildControlBarButton(
-                                color: Color(0xFF7C4DFF),
+                                color: const Color(0xFF7C4DFF),
                                 context,
                                 icon: Icons.diamond,
                                 onTap: () => _showPremiumDialog(context),
@@ -399,21 +408,21 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
 
                                   return _buildControlBarButton(
                                     context,
-                                    color: Color(0xFF1E1E26),
+                                    color: const Color(0xFF1E1E26),
                                     icon: isDownloaded
                                         ? Icons.check_circle_rounded
                                         : Icons.download_rounded,
                                     onTap: () {
                                       if (isDownloaded) return;
-                                      final ext = widget.wallpaper.isVideo
+                                      final ext = _currentWallpaper.isVideo
                                           ? 'mp4'
                                           : 'jpg';
                                       final filename =
-                                          'lumio_${widget.wallpaper.id}.$ext';
+                                          'lumio_${_currentWallpaper.id}.$ext';
                                       context
                                           .read<DownloadCubit>()
                                           .downloadWallpaper(
-                                            widget.wallpaper.fullUrl,
+                                            _currentWallpaper.fullUrl,
                                             filename,
                                           );
                                     },
@@ -423,16 +432,15 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
                                 },
                               ),
 
-                              if (!widget.wallpaper.isVideo) ...[
+                              if (!_currentWallpaper.isVideo) ...[
                                 const SizedBox(width: 4),
 
                                 // Set Wallpaper Button
                                 _buildControlBarButton(
                                   context,
                                   icon: Icons.wallpaper_rounded,
-                                  color: Color(0xFF1E1E26),
+                                  color: const Color(0xFF1E1E26),
                                   onTap: () {
-                                    // Capture the valid cubit from the Builder context
                                     final setWallpaperCubit = context
                                         .read<SetWallpaperCubit>();
 
@@ -444,9 +452,10 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
                                       builder: (btmContext) => Container(
                                         decoration: BoxDecoration(
                                           color: Theme.of(context).cardColor,
-                                          borderRadius: BorderRadius.vertical(
-                                            top: Radius.circular(20),
-                                          ),
+                                          borderRadius:
+                                              const BorderRadius.vertical(
+                                                top: Radius.circular(20),
+                                              ),
                                         ),
                                         padding: const EdgeInsets.symmetric(
                                           vertical: 20,
@@ -472,7 +481,7 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
                                               onTap: () {
                                                 Navigator.pop(btmContext);
                                                 _setWallpaperDirectly(
-                                                  widget.wallpaper.fullUrl,
+                                                  _currentWallpaper.fullUrl,
                                                   WallpaperManagerPlus
                                                       .homeScreen,
                                                   setWallpaperCubit,
@@ -497,7 +506,7 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
                                               onTap: () {
                                                 Navigator.pop(btmContext);
                                                 _setWallpaperDirectly(
-                                                  widget.wallpaper.fullUrl,
+                                                  _currentWallpaper.fullUrl,
                                                   WallpaperManagerPlus
                                                       .lockScreen,
                                                   setWallpaperCubit,
@@ -522,7 +531,7 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
                                               onTap: () {
                                                 Navigator.pop(btmContext);
                                                 _setWallpaperDirectly(
-                                                  widget.wallpaper.fullUrl,
+                                                  _currentWallpaper.fullUrl,
                                                   WallpaperManagerPlus
                                                       .bothScreens,
                                                   setWallpaperCubit,
@@ -546,7 +555,7 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
                               child: _buildControlBarButton(
                                 context,
                                 icon: Icons.info_outline_rounded,
-                                color: Color(0xFF1E1E26),
+                                color: const Color(0xFF1E1E26),
                                 onTap: () => _showInfoPopup(context),
                               ),
                             ),
@@ -562,12 +571,12 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
                       child: BlocBuilder<FavoritesCubit, FavoritesState>(
                         builder: (context, state) {
                           final isFavorite = state.favoriteIds.contains(
-                            widget.wallpaper.id,
+                            _currentWallpaper.id,
                           );
                           return GestureDetector(
                             onTap: () {
                               context.read<FavoritesCubit>().toggleFavorite(
-                                widget.wallpaper.id,
+                                _currentWallpaper.id,
                               );
                             },
                             child: Container(
@@ -589,7 +598,7 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
                                     ? Icons.favorite_rounded
                                     : Icons.favorite_border_rounded,
                                 color: isFavorite
-                                    ? Color(0xFF7C4DFF)
+                                    ? const Color(0xFF7C4DFF)
                                     : Colors.black,
                                 size: 28,
                               ),
@@ -598,7 +607,8 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
                         },
                       ),
                     ),
-                  ], // End of if (!_isPreviewMode)
+                  ],
+
                   // Simulated Lock Screen UI in Preview Mode
                   if (_isPreviewMode) ...[
                     // Top: Clock and Date
@@ -625,7 +635,7 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
                             ),
                           ),
                           Text(
-                            'Wednesday, May 23', // Simulated date
+                            'Wednesday, May 23',
                             style: GoogleFonts.outfit(
                               color: Colors.white,
                               fontSize: 18,
@@ -715,7 +725,7 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
         width: 52,
         height: 52,
         decoration: BoxDecoration(
-          color: isActive ? Color(0xFF7C4DFF) : Colors.transparent,
+          color: isActive ? const Color(0xFF7C4DFF) : Colors.transparent,
           shape: BoxShape.circle,
         ),
         child: isLoading
@@ -761,8 +771,11 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
     SetWallpaperCubit cubit,
   ) async {
     if (!mounted) return;
-
-    cubit.setWallpaper(url, location, context: context);
+    final size = MediaQuery.of(context).size;
+    final targetRatio = size.width > 0 && size.height > 0
+        ? size.width / size.height
+        : null;
+    cubit.setWallpaper(url, location, targetRatio: targetRatio);
   }
 
   Widget _buildLockScreenIconButton(IconData icon) {
@@ -774,6 +787,225 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
         shape: BoxShape.circle,
       ),
       child: Icon(icon, color: Colors.white, size: 24),
+    );
+  }
+}
+
+/// A self-contained widget for rendering a single page's wallpaper image or video.
+/// Correctly disposes of video resources when swiped away.
+class WallpaperPageContent extends StatefulWidget {
+  final WallpaperModel wallpaper;
+  final String? heroTag;
+  final bool isInitial;
+  final VoidCallback onTap;
+
+  const WallpaperPageContent({
+    super.key,
+    required this.wallpaper,
+    this.heroTag,
+    required this.isInitial,
+    required this.onTap,
+  });
+
+  @override
+  State<WallpaperPageContent> createState() => _WallpaperPageContentState();
+}
+
+class _WallpaperPageContentState extends State<WallpaperPageContent> {
+  CachedVideoPlayerPlus? _videoController;
+  bool _isVideoInitialized = false;
+  bool _hasError = false;
+  String _errorMessage = '';
+
+  @override
+  void initState() {
+    super.initState();
+    // Increment view count for the wallpaper on loading
+    WallpaperRepository().incrementViews(widget.wallpaper.id);
+
+    if (widget.wallpaper.isVideo && widget.wallpaper.hasValidUrl) {
+      _videoController =
+          CachedVideoPlayerPlus.networkUrl(Uri.parse(widget.wallpaper.fullUrl))
+            ..initialize()
+                .then((_) {
+                  if (mounted) {
+                    setState(() {
+                      _isVideoInitialized = true;
+                    });
+                    _videoController!.controller.setVolume(0); // Mute video
+                    _videoController!.controller.play();
+                    _videoController!.controller.setLooping(true);
+                  }
+                })
+                .catchError((error) {
+                  if (mounted) {
+                    setState(() {
+                      _hasError = true;
+                      _errorMessage = 'Failed to load video';
+                    });
+                  }
+                });
+    } else if (widget.wallpaper.isVideo && !widget.wallpaper.hasValidUrl) {
+      _hasError = true;
+      _errorMessage = 'Invalid video URL';
+    }
+  }
+
+  @override
+  void dispose() {
+    _videoController?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    Widget content;
+    if (_hasError) {
+      content = Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, color: Colors.white, size: 48),
+            const SizedBox(height: 16),
+            Text(
+              _errorMessage.isNotEmpty ? _errorMessage : 'Error loading media',
+              style: const TextStyle(color: Colors.white),
+            ),
+          ],
+        ),
+      );
+    } else if (widget.wallpaper.isVideo) {
+      if (_videoController != null && _isVideoInitialized) {
+        content = SizedBox.expand(
+          child: FittedBox(
+            fit: BoxFit.cover,
+            child: SizedBox(
+              width: _videoController!.controller.value.size.width,
+              height: _videoController!.controller.value.size.height,
+              child: VideoPlayer(_videoController!.controller),
+            ),
+          ),
+        );
+      } else {
+        content = const Center(
+          child: CircularProgressIndicator(color: Colors.white),
+        );
+      }
+    } else if (widget.wallpaper.hasValidUrl) {
+      if (widget.isInitial && widget.heroTag != null) {
+        content = Hero(
+          tag: widget.heroTag!,
+          child: CachedNetworkImage(
+            imageUrl: widget.wallpaper.fullUrl,
+            fit: BoxFit.cover,
+            placeholder: (context, url) => const Center(
+              child: CircularProgressIndicator(color: Colors.white),
+            ),
+          ),
+        );
+      } else {
+        content = CachedNetworkImage(
+          imageUrl: widget.wallpaper.fullUrl,
+          fit: BoxFit.cover,
+          placeholder: (context, url) => const Center(
+            child: CircularProgressIndicator(color: Colors.white),
+          ),
+        );
+      }
+    } else {
+      content = const SizedBox.shrink();
+    }
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        content,
+        Positioned.fill(
+          child: GestureDetector(
+            onTap: widget.onTap,
+            behavior: HitTestBehavior.translucent,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Bouncy swipe-up hint overlay widget.
+class SwipeUpHint extends StatefulWidget {
+  const SwipeUpHint({super.key});
+
+  @override
+  State<SwipeUpHint> createState() => _SwipeUpHintState();
+}
+
+class _SwipeUpHintState extends State<SwipeUpHint>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    )..repeat(reverse: true);
+    _animation = Tween<double>(
+      begin: 0.0,
+      end: 12.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, child) {
+        return Transform.translate(
+          offset: Offset(0, -_animation.value),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.keyboard_double_arrow_up_rounded,
+                color: Colors.white,
+                size: 28,
+                shadows: [
+                  Shadow(
+                    blurRadius: 8.0,
+                    color: Colors.black.withValues(alpha: 0.8),
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Swipe up for next',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.5,
+                  shadows: [
+                    Shadow(
+                      blurRadius: 8.0,
+                      color: Colors.black.withValues(alpha: 0.8),
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

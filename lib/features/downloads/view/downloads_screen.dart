@@ -55,6 +55,7 @@ class DownloadsScreen extends StatelessWidget {
                     children: [
                       WallpaperThumbnail(
                         wallpaper: wallpaper,
+                        wallpapers: state.wallpapers,
                         sectionId: 'downloads',
                         index: index,
                       ),

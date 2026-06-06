@@ -95,6 +95,7 @@ class CategorySection extends StatelessWidget {
           ),
           child: WallpaperThumbnail(
             wallpaper: wallpapers[index],
+            wallpapers: wallpapers,
             width: 120,
             sectionId: 'category_section_${category.id}',
             index: index,

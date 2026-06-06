@@ -8,6 +8,7 @@ import '../../utils/constants.dart';
 /// Provides methods to fetch wallpapers by category with pagination support
 class WallpaperRepository {
   final FirebaseFirestore _firestore;
+  final Map<String, WallpaperModel> _wallpaperCache = {};
 
   WallpaperRepository({FirebaseFirestore? firestore})
     : _firestore = firestore ?? FirebaseFirestore.instance;
@@ -45,9 +46,15 @@ class WallpaperRepository {
 
       final querySnapshot = await query.get();
 
-      return querySnapshot.docs
+      final wallpapers = querySnapshot.docs
           .map((doc) => WallpaperModel.fromFirestore(doc))
           .toList();
+
+      for (final w in wallpapers) {
+        _wallpaperCache[w.id] = w;
+      }
+
+      return wallpapers;
     } catch (e) {
       throw Exception('Failed to fetch wallpapers: $e');
     }
@@ -78,9 +85,15 @@ class WallpaperRepository {
 
       final querySnapshot = await query.get();
 
-      return querySnapshot.docs
+      final wallpapers = querySnapshot.docs
           .map((doc) => WallpaperModel.fromFirestore(doc))
           .toList();
+
+      for (final w in wallpapers) {
+        _wallpaperCache[w.id] = w;
+      }
+
+      return wallpapers;
     } catch (e) {
       throw Exception('Failed to fetch wallpapers by color: $e');
     }
@@ -127,13 +140,19 @@ class WallpaperRepository {
   /// Get a single wallpaper by ID
   Future<WallpaperModel?> getWallpaperById(String wallpaperId) async {
     try {
+      if (_wallpaperCache.containsKey(wallpaperId)) {
+        return _wallpaperCache[wallpaperId];
+      }
+
       final doc = await _firestore
           .collection(AppConstants.wallpapersCollection)
           .doc(wallpaperId)
           .get();
 
       if (doc.exists) {
-        return WallpaperModel.fromFirestore(doc);
+        final wallpaper = WallpaperModel.fromFirestore(doc);
+        _wallpaperCache[wallpaperId] = wallpaper;
+        return wallpaper;
       }
       return null;
     } catch (e) {
@@ -155,9 +174,15 @@ class WallpaperRepository {
 
       final querySnapshot = await query.get();
 
-      return querySnapshot.docs
+      final wallpapers = querySnapshot.docs
           .map((doc) => WallpaperModel.fromFirestore(doc))
           .toList();
+
+      for (final w in wallpapers) {
+        _wallpaperCache[w.id] = w;
+      }
+
+      return wallpapers;
     } catch (e) {
       throw Exception('Failed to fetch all wallpapers: $e');
     }
@@ -235,6 +260,10 @@ class WallpaperRepository {
       final allWallpapers = querySnapshot.docs
           .map((doc) => WallpaperModel.fromFirestore(doc))
           .toList();
+
+      for (final w in allWallpapers) {
+        _wallpaperCache[w.id] = w;
+      }
 
       return allWallpapers.where((wallpaper) {
         try {

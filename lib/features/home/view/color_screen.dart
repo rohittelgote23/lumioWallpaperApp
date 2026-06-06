@@ -164,6 +164,7 @@ class _ColorScreenViewState extends State<_ColorScreenView> {
                           ) {
                             return WallpaperThumbnail(
                               wallpaper: state.wallpapers[index],
+                              wallpapers: state.wallpapers,
                               sectionId: 'color_${widget.colorName}',
                               index: index,
                             );

@@ -123,6 +123,7 @@ class WallpaperHorizontalSection extends StatelessWidget {
           ),
           child: WallpaperThumbnail(
             wallpaper: wallpapers[index],
+            wallpapers: wallpapers,
             width: 140,
             height: 210,
             sectionId: categoryId,

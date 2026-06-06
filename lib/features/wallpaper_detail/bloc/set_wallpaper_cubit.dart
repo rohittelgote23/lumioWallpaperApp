@@ -17,7 +17,7 @@ class SetWallpaperCubit extends Cubit<SetWallpaperState> {
   Future<void> setWallpaper(
     String url,
     int location, {
-    BuildContext? context,
+    double? targetRatio,
   }) async {
     try {
       emit(SetWallpaperLoading());
@@ -31,7 +31,7 @@ class SetWallpaperCubit extends Cubit<SetWallpaperState> {
       final result = await _wallpaperService.setStaticWallpaper(
         filePath: file.path,
         location: location,
-        // context: context,
+        targetRatio: targetRatio,
       );
 
       emit(SetWallpaperSuccess(result));
@@ -53,14 +53,14 @@ class SetWallpaperCubit extends Cubit<SetWallpaperState> {
   Future<void> setWallpaperFromFile(
     String filePath,
     int location, {
-    BuildContext? context,
+    double? targetRatio,
   }) async {
     try {
       emit(SetWallpaperLoading());
       final result = await _wallpaperService.setStaticWallpaper(
         filePath: filePath,
         location: location,
-        context: context,
+        targetRatio: targetRatio,
       );
       emit(SetWallpaperSuccess(result));
     } catch (e) {

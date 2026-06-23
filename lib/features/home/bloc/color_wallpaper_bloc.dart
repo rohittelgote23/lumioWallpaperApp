@@ -39,7 +39,7 @@ abstract class ColorWallpaperState extends Equatable {
   const ColorWallpaperState();
 
   @override
-  List<Object> get props => [];
+  List<Object?> get props => [];
 }
 
 class ColorWallpaperInitial extends ColorWallpaperState {
@@ -54,27 +54,32 @@ class ColorWallpaperLoaded extends ColorWallpaperState {
   final List<WallpaperModel> wallpapers;
   final String colorName;
   final bool hasReachedMax;
+  final String? errorMessage;
 
   const ColorWallpaperLoaded(
     this.wallpapers,
     this.colorName, {
     this.hasReachedMax = false,
+    this.errorMessage,
   });
 
   ColorWallpaperLoaded copyWith({
     List<WallpaperModel>? wallpapers,
     String? colorName,
     bool? hasReachedMax,
+    String? errorMessage,
+    bool clearError = false,
   }) {
     return ColorWallpaperLoaded(
       wallpapers ?? this.wallpapers,
       colorName ?? this.colorName,
       hasReachedMax: hasReachedMax ?? this.hasReachedMax,
+      errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
     );
   }
 
   @override
-  List<Object> get props => [wallpapers, colorName, hasReachedMax];
+  List<Object?> get props => [wallpapers, colorName, hasReachedMax, errorMessage];
 }
 
 class ColorWallpaperError extends ColorWallpaperState {
@@ -144,10 +149,11 @@ class ColorWallpaperBloc
           currentState.copyWith(
             wallpapers: List.of(currentState.wallpapers)..addAll(newWallpapers),
             hasReachedMax: newWallpapers.length < limit,
+            clearError: true,
           ),
         );
       } catch (e) {
-        emit(ColorWallpaperError(e.toString()));
+        emit(currentState.copyWith(errorMessage: e.toString()));
       }
     }
   }

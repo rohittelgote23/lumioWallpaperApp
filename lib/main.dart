@@ -20,32 +20,64 @@ import 'features/onboarding/view/onboarding_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Firebase
-  await Firebase.initializeApp();
+  try {
+    // Initialize Firebase
+    await Firebase.initializeApp();
 
-  // Initialize Hive
-  await Hive.initFlutter();
+    // Initialize Hive
+    await Hive.initFlutter();
 
-  // Initialize Repositories
-  final authRepository = AuthRepository();
-  final favoritesRepository = FavoritesRepository();
-  await favoritesRepository.init();
+    // Initialize Repositories
+    final authRepository = AuthRepository();
+    final favoritesRepository = FavoritesRepository();
+    await favoritesRepository.init();
 
-  final categoryRepository = CategoryRepository();
+    final categoryRepository = CategoryRepository();
 
-  // Check if first time
-  final prefs = await SharedPreferences.getInstance();
-  final isFirstTime = prefs.getBool('isFirstTime') ?? true;
+    // Check if first time
+    final prefs = await SharedPreferences.getInstance();
+    final isFirstTime = prefs.getBool('isFirstTime') ?? true;
 
-
-  runApp(
-    MyApp(
-      authRepository: authRepository,
-      favoritesRepository: favoritesRepository,
-      categoryRepository: categoryRepository,
-      isFirstTime: isFirstTime,
-    ),
-  );
+    runApp(
+      MyApp(
+        authRepository: authRepository,
+        favoritesRepository: favoritesRepository,
+        categoryRepository: categoryRepository,
+        isFirstTime: isFirstTime,
+      ),
+    );
+  } catch (e) {
+    runApp(
+      MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.dark(),
+        home: Scaffold(
+          body: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, color: Colors.red, size: 60),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Failed to initialize app',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    e.toString(),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.white70),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class MyApp extends StatelessWidget {

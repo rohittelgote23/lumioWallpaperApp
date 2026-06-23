@@ -1,7 +1,6 @@
 // import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:wallpaper_manager_plus/wallpaper_manager_plus.dart';
-import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
@@ -9,7 +8,8 @@ import 'dart:io';
 class WallpaperService {
   Future<String> setStaticWallpaper({
     required String filePath,
-    required int location, // WallpaperManagerPlus.homeScreen, lockScreen, bothScreens
+    required int
+    location, // WallpaperManagerPlus.homeScreen, lockScreen, bothScreens
     double? targetRatio,
   }) async {
     try {

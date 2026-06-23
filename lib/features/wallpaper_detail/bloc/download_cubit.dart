@@ -96,11 +96,13 @@ class DownloadCubit extends Cubit<DownloadState> {
         final tempDir = await getTemporaryDirectory();
         final filePath = '${tempDir.path}/$filename';
 
-        await _downloadFile(url, filePath);
-        await Gal.putVideo(filePath, album: 'Lumiowalls');
-
-        // Clean up temporary file
-        _deleteFile(filePath);
+        try {
+          await _downloadFile(url, filePath);
+          await Gal.putVideo(filePath, album: 'Lumiowalls');
+        } finally {
+          // Clean up temporary file
+          _deleteFile(filePath);
+        }
       } else {
         // IMAGE: Save to Internal Cache
         final cacheDir = await getApplicationCacheDirectory();

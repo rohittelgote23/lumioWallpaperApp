@@ -65,7 +65,7 @@ abstract class WallpaperState extends Equatable {
   const WallpaperState();
 
   @override
-  List<Object> get props => [];
+  List<Object?> get props => [];
 }
 
 class WallpaperInitial extends WallpaperState {
@@ -81,12 +81,14 @@ class WallpaperLoaded extends WallpaperState {
   final String categoryId;
   final bool hasReachedMax;
   final String orderBy;
+  final String? errorMessage;
 
   const WallpaperLoaded(
     this.wallpapers,
     this.categoryId, {
     this.hasReachedMax = false,
     this.orderBy = 'createdAt',
+    this.errorMessage,
   });
 
   WallpaperLoaded copyWith({
@@ -94,17 +96,26 @@ class WallpaperLoaded extends WallpaperState {
     String? categoryId,
     bool? hasReachedMax,
     String? orderBy,
+    String? errorMessage,
+    bool clearError = false,
   }) {
     return WallpaperLoaded(
       wallpapers ?? this.wallpapers,
       categoryId ?? this.categoryId,
       hasReachedMax: hasReachedMax ?? this.hasReachedMax,
       orderBy: orderBy ?? this.orderBy,
+      errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
     );
   }
 
   @override
-  List<Object> get props => [wallpapers, categoryId, hasReachedMax, orderBy];
+  List<Object?> get props => [
+        wallpapers,
+        categoryId,
+        hasReachedMax,
+        orderBy,
+        errorMessage,
+      ];
 }
 
 class WallpaperError extends WallpaperState {
@@ -183,10 +194,11 @@ class WallpaperBloc extends Bloc<WallpaperEvent, WallpaperState> {
             wallpapers: List.of(currentState.wallpapers)..addAll(newWallpapers),
             hasReachedMax: newWallpapers.length < limit,
             orderBy: orderBy,
+            clearError: true,
           ),
         );
       } catch (e) {
-        emit(WallpaperError(e.toString()));
+        emit(currentState.copyWith(errorMessage: e.toString()));
       }
     }
   }

@@ -51,21 +51,33 @@ class AuthCubit extends Cubit<AuthState> {
 
   void _checkCurrentUser() {
     _userSubscription?.cancel();
-    _userSubscription = _authRepository.user.listen((User? user) {
-      _userDataSubscription?.cancel();
-      if (user != null) {
-        // Listen to real-time user data updates
-        _userDataSubscription = _authRepository
-            .getUserDataStream(user.uid)
-            .listen((userData) {
-              if (userData != null) {
-                emit(Authenticated(userData));
-              }
-            });
-      } else {
+    _userSubscription = _authRepository.user.listen(
+      (User? user) {
+        _userDataSubscription?.cancel();
+        if (user != null) {
+          // Listen to real-time user data updates
+          _userDataSubscription = _authRepository
+              .getUserDataStream(user.uid)
+              .listen(
+                (userData) {
+                  if (userData != null) {
+                    emit(Authenticated(userData));
+                  }
+                },
+                onError: (error) {
+                  emit(AuthError("Failed to fetch user data: $error"));
+                  emit(Unauthenticated());
+                },
+              );
+        } else {
+          emit(Unauthenticated());
+        }
+      },
+      onError: (error) {
+        emit(AuthError("Auth state change error: $error"));
         emit(Unauthenticated());
-      }
-    });
+      },
+    );
   }
 
   Future<void> signInWithGoogle() async {

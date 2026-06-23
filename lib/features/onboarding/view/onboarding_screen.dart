@@ -9,8 +9,12 @@ class OnboardingScreen extends StatelessWidget {
   const OnboardingScreen({super.key});
 
   Future<void> _completeOnboarding(BuildContext context) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('isFirstTime', false);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('isFirstTime', false);
+    } catch (e) {
+      debugPrint('Error saving onboarding preference: $e');
+    }
 
     if (context.mounted) {
       Navigator.pushReplacement(

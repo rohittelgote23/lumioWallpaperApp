@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lumiowalls/core/services/wallpaper_service.dart';
 import 'package:path_provider/path_provider.dart';
@@ -107,10 +106,9 @@ class SetWallpaperCubit extends Cubit<SetWallpaperState> {
       if (await file.exists()) {
         return file;
       }
-      return null;
+      throw Exception('File was not saved successfully.');
     } catch (e) {
-      // print('Download error: $e');
-      return null;
+      rethrow;
     }
   }
 }

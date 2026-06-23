@@ -14,13 +14,16 @@ class SearchCubit extends Cubit<SearchState> {
   }
 
   Future<void> _loadHistory() async {
-    final prefs = await SharedPreferences.getInstance();
-    final history = prefs.getStringList(_historyKey) ?? [];
-    emit(SearchInitial(history: history));
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final history = prefs.getStringList(_historyKey) ?? [];
+      emit(SearchInitial(history: history));
+    } catch (e) {
+      emit(const SearchInitial(history: []));
+    }
   }
 
   Future<List<String>> _addToHistory(String query) async {
-    final prefs = await SharedPreferences.getInstance();
     List<String> history = List.from(state.history);
 
     // Remove if exists to move to top
@@ -32,21 +35,34 @@ class SearchCubit extends Cubit<SearchState> {
       history = history.sublist(0, 6);
     }
 
-    await prefs.setStringList(_historyKey, history);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(_historyKey, history);
+    } catch (e) {
+      // Fallback: return in-memory history representation
+    }
     return history;
   }
 
   Future<void> clearHistory() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_historyKey);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_historyKey);
+    } catch (e) {
+      // Fallback
+    }
     emit(SearchInitial(history: const []));
   }
 
   Future<void> removeFromHistory(String query) async {
-    final prefs = await SharedPreferences.getInstance();
     List<String> history = List.from(state.history);
     history.remove(query);
-    await prefs.setStringList(_historyKey, history);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(_historyKey, history);
+    } catch (e) {
+      // Fallback
+    }
 
     // Maintain current state type but update history
     if (state is SearchSuccess) {

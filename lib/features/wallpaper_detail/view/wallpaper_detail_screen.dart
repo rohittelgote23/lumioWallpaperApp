@@ -857,6 +857,19 @@ class _WallpaperPageContentState extends State<WallpaperPageContent> {
     super.dispose();
   }
 
+  Widget _buildError(BuildContext context) {
+    return Container(
+      color: Theme.of(context).colorScheme.surface,
+      child: Center(
+        child: Icon(
+          Icons.broken_image_rounded,
+          size: 40,
+          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     Widget content;
@@ -901,6 +914,7 @@ class _WallpaperPageContentState extends State<WallpaperPageContent> {
             placeholder: (context, url) => const Center(
               child: CircularProgressIndicator(color: Colors.white),
             ),
+            errorWidget: (context, url, error) => _buildError(context),
           ),
         );
       } else {
@@ -910,10 +924,11 @@ class _WallpaperPageContentState extends State<WallpaperPageContent> {
           placeholder: (context, url) => const Center(
             child: CircularProgressIndicator(color: Colors.white),
           ),
+          errorWidget: (context, url, error) => _buildError(context),
         );
       }
     } else {
-      content = const SizedBox.shrink();
+      content = _buildError(context);
     }
 
     return Stack(

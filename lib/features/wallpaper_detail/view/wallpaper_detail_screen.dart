@@ -310,6 +310,7 @@ class _WallpaperDetailScreenState extends State<WallpaperDetailScreen> {
                           wallpaper: wallpaper,
                           heroTag: widget.heroTag,
                           isInitial: index == widget.initialIndex,
+                          isActive: index == _currentIndex,
                           onTap: () {
                             setState(() {
                               _isPreviewMode = !_isPreviewMode;
@@ -797,6 +798,7 @@ class WallpaperPageContent extends StatefulWidget {
   final WallpaperModel wallpaper;
   final String? heroTag;
   final bool isInitial;
+  final bool isActive;
   final VoidCallback onTap;
 
   const WallpaperPageContent({
@@ -804,6 +806,7 @@ class WallpaperPageContent extends StatefulWidget {
     required this.wallpaper,
     this.heroTag,
     required this.isInitial,
+    required this.isActive,
     required this.onTap,
   });
 
@@ -833,7 +836,9 @@ class _WallpaperPageContentState extends State<WallpaperPageContent> {
                       _isVideoInitialized = true;
                     });
                     _videoController!.controller.setVolume(0); // Mute video
-                    _videoController!.controller.play();
+                    if (widget.isActive) {
+                      _videoController!.controller.play();
+                    }
                     _videoController!.controller.setLooping(true);
                   }
                 })
@@ -848,6 +853,20 @@ class _WallpaperPageContentState extends State<WallpaperPageContent> {
     } else if (widget.wallpaper.isVideo && !widget.wallpaper.hasValidUrl) {
       _hasError = true;
       _errorMessage = 'Invalid video URL';
+    }
+  }
+
+  @override
+  void didUpdateWidget(WallpaperPageContent oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isActive != widget.isActive) {
+      if (_videoController != null && _isVideoInitialized) {
+        if (widget.isActive) {
+          _videoController!.controller.play();
+        } else {
+          _videoController!.controller.pause();
+        }
+      }
     }
   }
 

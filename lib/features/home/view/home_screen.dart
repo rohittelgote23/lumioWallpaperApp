@@ -14,6 +14,8 @@ import '../widgets/home_app_bar.dart';
 import '../widgets/home_slider.dart';
 import '../widgets/color_tone_section.dart';
 
+import '../widgets/lazy_indexed_stack.dart';
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -24,16 +26,15 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
   int _refreshKey = 0;
-  final List<bool> _activatedTabs = [true, false, false, false];
 
   @override
   Widget build(BuildContext context) {
     // Pages for each tab
     final pages = [
       _buildHomeContent(),
-      _activatedTabs[1] ? const CategoriesTab() : const SizedBox.shrink(),
-      _activatedTabs[2] ? const FavoritesScreen() : const SizedBox.shrink(),
-      _activatedTabs[3] ? const ProfilePage() : const SizedBox.shrink(),
+      const CategoriesTab(),
+      const FavoritesScreen(),
+      const ProfilePage(),
     ];
 
     return MainBackground(
@@ -43,14 +44,13 @@ class _HomeScreenState extends State<HomeScreen> {
         body: SafeArea(
           bottom: false,
           top: false,
-          child: IndexedStack(index: _currentIndex, children: pages),
+          child: LazyIndexedStack(index: _currentIndex, children: pages),
         ),
         bottomNavigationBar: CustomBottomNav(
           currentIndex: _currentIndex,
           onTap: (index) {
             setState(() {
               _currentIndex = index;
-              _activatedTabs[index] = true;
             });
           },
         ),

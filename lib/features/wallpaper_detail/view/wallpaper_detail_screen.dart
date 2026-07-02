@@ -821,7 +821,7 @@ class _WallpaperPageContentState extends State<WallpaperPageContent> {
   void initState() {
     super.initState();
     // Increment view count for the wallpaper on loading
-    WallpaperRepository().incrementViews(widget.wallpaper.id);
+    context.read<WallpaperRepository>().incrementViews(widget.wallpaper.id);
 
     if (widget.wallpaper.isVideo && widget.wallpaper.hasValidUrl) {
       _videoController =
@@ -863,7 +863,7 @@ class _WallpaperPageContentState extends State<WallpaperPageContent> {
       child: Center(
         child: Icon(
           Icons.broken_image_rounded,
-          size: 40,
+          size: 60,
           color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3),
         ),
       ),

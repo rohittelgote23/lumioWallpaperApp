@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/data/models/wallpaper_model.dart';
+import '../../../core/data/repositories/downloads_repository.dart';
+import '../../../core/data/repositories/wallpaper_repository.dart';
 import '../../home/widgets/wallpaper_thumbnail.dart';
 import '../bloc/downloads_list_cubit.dart';
 
@@ -15,7 +17,10 @@ class DownloadsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) => DownloadsListCubit()..loadDownloads(),
+      create: (context) => DownloadsListCubit(
+        downloadsRepo: DownloadsRepository(),
+        wallpaperRepo: RepositoryProvider.of<WallpaperRepository>(context),
+      )..loadDownloads(),
       child: Scaffold(
         appBar: AppBar(
           title: Text(

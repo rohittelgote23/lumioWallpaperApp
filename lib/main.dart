@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'core/theme/app_theme.dart';
 import 'core/data/repositories/favorites_repository.dart';
@@ -11,6 +12,7 @@ import 'features/auth/bloc/auth_cubit.dart';
 import 'features/home/view/home_screen.dart';
 import 'features/favorites/bloc/favorites_cubit.dart';
 import 'features/home/bloc/category_bloc.dart';
+import 'features/home/bloc/home_wallpapers_cubit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'core/bloc/theme/theme_cubit.dart';
 import 'core/bloc/theme/theme_state.dart';
@@ -23,6 +25,10 @@ void main() async {
   try {
     // Initialize Firebase
     await Firebase.initializeApp();
+    FirebaseFirestore.instance.settings = const Settings(
+      persistenceEnabled: true,
+      cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+    );
 
     // Initialize Hive
     await Hive.initFlutter();
@@ -61,7 +67,7 @@ void main() async {
                   const Icon(Icons.error_outline, color: Colors.red, size: 60),
                   const SizedBox(height: 16),
                   const Text(
-                    'Failed to initialize app',
+                     'Failed to initialize app',
                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
@@ -123,6 +129,12 @@ class MyApp extends StatelessWidget {
                   ..add(LoadCategories()),
           ),
 
+          // Home Wallpapers Cubit (app-wide)
+          BlocProvider(
+            create: (context) => HomeWallpapersCubit(
+              repository: context.read<WallpaperRepository>(),
+            )..loadHomeWallpapers(),
+          ),
         ],
         child: Builder(
           builder: (context) {

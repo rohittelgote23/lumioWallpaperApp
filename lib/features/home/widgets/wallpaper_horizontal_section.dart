@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/data/models/wallpaper_model.dart';
 import '../../../core/data/models/category_model.dart';
-import '../../../core/data/repositories/wallpaper_repository.dart';
-import '../../category/bloc/wallpaper_bloc.dart';
+import '../bloc/home_wallpapers_cubit.dart';
 import '../../category/view/category_screen.dart';
 import '../widgets/wallpaper_thumbnail.dart';
 
@@ -23,88 +22,100 @@ class WallpaperHorizontalSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) =>
-          WallpaperBloc(repository: WallpaperRepository())
-            ..add(LoadWallpapers(categoryId, limit: itemLimit)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  title,
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+    return BlocBuilder<HomeWallpapersCubit, HomeWallpapersState>(
+      builder: (context, state) {
+        if (state is HomeWallpapersLoading || state is HomeWallpapersInitial) {
+          return _buildContent(context, null, isLoading: true);
+        } else if (state is HomeWallpapersLoaded) {
+          List<WallpaperModel> filtered = List.from(state.wallpapers);
+          if (categoryId == 'TrendingToday') {
+            filtered.sort((a, b) => b.views.compareTo(a.views));
+          } else if (categoryId != 'all') {
+            filtered = filtered
+                .where((w) => w.categoryIds.contains(categoryId))
+                .toList();
+          }
+
+          final wallpapersToShow = filtered.take(itemLimit).toList();
+          if (wallpapersToShow.isEmpty) {
+            return const SizedBox.shrink();
+          }
+          return _buildContent(context, wallpapersToShow, isLoading: false);
+        }
+        return const SizedBox.shrink();
+      },
+    );
+  }
+
+  Widget _buildContent(
+    BuildContext context,
+    List<WallpaperModel>? wallpapers, {
+    required bool isLoading,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                title,
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
                 ),
-                GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => CategoryScreen(
-                          category: CategoryModel(
-                            id: categoryId,
-                            name: title,
-                            order: 0,
-                            thumbnail: '',
-                            createdAt: DateTime.now(),
-                            isVirtual: false,
-                          ),
-                          itemLimit: viewAllLimit,
+              ),
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => CategoryScreen(
+                        category: CategoryModel(
+                          id: categoryId,
+                          name: title,
+                          order: 0,
+                          thumbnail: '',
+                          createdAt: DateTime.now(),
+                          isVirtual: false,
                         ),
+                        itemLimit: viewAllLimit,
                       ),
-                    );
-                  },
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min, // keeps row compact
-                    children: [
-                      Text(
-                        'View All',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
+                    ),
+                  );
+                },
+                child: Row(
+                  mainAxisSize: MainAxisSize.min, // keeps row compact
+                  children: [
+                    Text(
+                      'View All',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
                       ),
-                      const SizedBox(width: 3),
-                      Icon(
-                        Icons.arrow_forward_ios_rounded,
-                        size: 10,
-                        color: Theme.of(context).brightness == Brightness.dark
-                            ? Colors
-                                  .white // Dark mode color
-                            : Colors.black,
-                      ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(width: 3),
+                    Icon(
+                      Icons.arrow_forward_ios_rounded,
+                      size: 10,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white // Dark mode color
+                          : Colors.black,
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          const SizedBox(height: 16),
-          SizedBox(
-            height: 210,
-            child: BlocBuilder<WallpaperBloc, WallpaperState>(
-              builder: (context, state) {
-                if (state is WallpaperLoading) {
-                  return _buildLoadingList(context);
-                } else if (state is WallpaperLoaded) {
-                  if (state.wallpapers.isEmpty) {
-                    return const SizedBox.shrink();
-                  }
-                  return _buildWallpaperList(context, state.wallpapers);
-                } else if (state is WallpaperError) {
-                  return const SizedBox.shrink();
-                }
-                return const SizedBox.shrink();
-              },
-            ),
-          ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          height: 210,
+          child: isLoading
+              ? _buildLoadingList(context)
+              : _buildWallpaperList(context, wallpapers!),
+        ),
+      ],
     );
   }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lumiowalls/core/views/main_background.dart';
 import '../bloc/category_bloc.dart';
+import '../bloc/home_wallpapers_cubit.dart';
 import '../../category/view/categories_tab.dart';
 import '../../category/view/category_screen.dart';
 import '../../favorites/view/favorites_screen.dart';
@@ -23,15 +24,16 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
   int _refreshKey = 0;
+  final List<bool> _activatedTabs = [true, false, false, false];
 
   @override
   Widget build(BuildContext context) {
     // Pages for each tab
     final pages = [
       _buildHomeContent(),
-      const CategoriesTab(),
-      const FavoritesScreen(),
-      const ProfilePage(),
+      _activatedTabs[1] ? const CategoriesTab() : const SizedBox.shrink(),
+      _activatedTabs[2] ? const FavoritesScreen() : const SizedBox.shrink(),
+      _activatedTabs[3] ? const ProfilePage() : const SizedBox.shrink(),
     ];
 
     return MainBackground(
@@ -48,6 +50,7 @@ class _HomeScreenState extends State<HomeScreen> {
           onTap: (index) {
             setState(() {
               _currentIndex = index;
+              _activatedTabs[index] = true;
             });
           },
         ),
@@ -64,7 +67,13 @@ class _HomeScreenState extends State<HomeScreen> {
         Expanded(
           child: RefreshIndicator(
             onRefresh: () async {
+              final refreshFutures = [
+                context.read<CategoryBloc>().stream.firstWhere((state) => state is CategoryLoaded || state is CategoryError),
+                context.read<HomeWallpapersCubit>().stream.firstWhere((state) => state is HomeWallpapersLoaded || state is HomeWallpapersError),
+              ];
               context.read<CategoryBloc>().add(const RefreshCategories());
+              context.read<HomeWallpapersCubit>().refreshHomeWallpapers();
+              await Future.wait(refreshFutures);
               if (mounted) {
                 setState(() {
                   _refreshKey++;

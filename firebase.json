@@ -1,1 +1,38 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"lumiowalls","appId":"1:439277971591:android:0411c55b6c145f900af022","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"lumiowalls","configurations":{"android":"1:439277971591:android:0411c55b6c145f900af022","ios":"1:439277971591:ios:fd06d4ab7759feb10af022"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "lumiowalls",
+          "appId": "1:439277971591:android:0411c55b6c145f900af022",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "lumiowalls",
+          "configurations": {
+            "android": "1:439277971591:android:0411c55b6c145f900af022",
+            "ios": "1:439277971591:ios:fd06d4ab7759feb10af022"
+          }
+        }
+      }
+    }
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ],
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" run lint"
+      ]
+    }
+  ]
+}

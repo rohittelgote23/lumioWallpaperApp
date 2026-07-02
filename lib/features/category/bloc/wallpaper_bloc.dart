@@ -150,18 +150,19 @@ class WallpaperBloc extends Bloc<WallpaperEvent, WallpaperState> {
       final limit = event.limit ?? 20;
       final orderBy = event.orderBy ?? 'createdAt';
 
-      final wallpapers = await _repository.getWallpapersByCategory(
-        event.categoryId,
-        limit: limit,
-        orderBy: orderBy,
-      );
-      emit(
-        WallpaperLoaded(
+      await emit.forEach<List<WallpaperModel>>(
+        _repository.getWallpapersByCategoryCacheFirst(
+          event.categoryId,
+          limit: limit,
+          orderBy: orderBy,
+        ),
+        onData: (wallpapers) => WallpaperLoaded(
           wallpapers,
           event.categoryId,
           hasReachedMax: wallpapers.length < limit,
           orderBy: orderBy,
         ),
+        onError: (e, s) => WallpaperError(e.toString()),
       );
     } catch (e) {
       emit(WallpaperError(e.toString()));
@@ -255,8 +256,11 @@ class WallpaperBloc extends Bloc<WallpaperEvent, WallpaperState> {
   ) async {
     emit(const WallpaperLoading());
     try {
-      final wallpapers = await _repository.getAllWallpapers(limit: event.limit);
-      emit(WallpaperLoaded(wallpapers, 'all'));
+      await emit.forEach<List<WallpaperModel>>(
+        _repository.getAllWallpapersCacheFirst(limit: event.limit),
+        onData: (wallpapers) => WallpaperLoaded(wallpapers, 'all'),
+        onError: (e, s) => WallpaperError(e.toString()),
+      );
     } catch (e) {
       emit(WallpaperError(e.toString()));
     }

@@ -36,15 +36,16 @@ class DownloadsListError extends DownloadsListState {
   List<Object?> get props => [message];
 }
 
-// Cubit
 class DownloadsListCubit extends Cubit<DownloadsListState> {
   final DownloadsRepository _downloadsRepo;
   final WallpaperRepository _wallpaperRepo;
 
-  DownloadsListCubit()
-    : _downloadsRepo = DownloadsRepository(),
-      _wallpaperRepo = WallpaperRepository(),
-      super(DownloadsListLoading());
+  DownloadsListCubit({
+    required DownloadsRepository downloadsRepo,
+    required WallpaperRepository wallpaperRepo,
+  }) : _downloadsRepo = downloadsRepo,
+       _wallpaperRepo = wallpaperRepo,
+       super(DownloadsListLoading());
 
   Future<void> loadDownloads() async {
     try {

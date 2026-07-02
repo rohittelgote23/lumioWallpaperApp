@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:hive/hive.dart';
 import '../models/wallpaper_model.dart';
 import '../../utils/constants.dart';
 
@@ -12,6 +13,45 @@ class WallpaperRepository {
 
   WallpaperRepository({FirebaseFirestore? firestore})
     : _firestore = firestore ?? FirebaseFirestore.instance;
+
+  Future<void> _cacheWallpapersList(String listKey, List<WallpaperModel> wallpapers) async {
+    try {
+      final wpBox = await Hive.openBox<Map>('wallpapers_cache');
+      final listBox = await Hive.openBox<List<dynamic>>('lists_cache');
+
+      // Save individual wallpapers
+      for (final wp in wallpapers) {
+        await wpBox.put(wp.id, wp.toJson());
+      }
+
+      // Save the list of IDs
+      final ids = wallpapers.map((w) => w.id).toList();
+      await listBox.put(listKey, ids);
+    } catch (e) {
+      // Fail silently to not disrupt the app
+    }
+  }
+
+  Future<List<WallpaperModel>> _getCachedWallpapersList(String listKey) async {
+    try {
+      final wpBox = await Hive.openBox<Map>('wallpapers_cache');
+      final listBox = await Hive.openBox<List<dynamic>>('lists_cache');
+
+      final ids = listBox.get(listKey);
+      if (ids == null) return [];
+
+      final List<WallpaperModel> wallpapers = [];
+      for (final id in ids) {
+        final wpMap = wpBox.get(id);
+        if (wpMap != null) {
+          wallpapers.add(WallpaperModel.fromJson(Map<String, dynamic>.from(wpMap)));
+        }
+      }
+      return wallpapers;
+    } catch (e) {
+      return [];
+    }
+  }
 
   /// Get all wallpapers for a specific category
   ///
@@ -54,6 +94,11 @@ class WallpaperRepository {
         _wallpaperCache[w.id] = w;
       }
 
+      if (startAfter == null) {
+        final listKey = '${categoryId}_limit_${limit ?? 'all'}_order_$orderBy';
+        await _cacheWallpapersList(listKey, wallpapers);
+      }
+
       return wallpapers;
     } catch (e) {
       throw Exception('Failed to fetch wallpapers: $e');
@@ -93,9 +138,92 @@ class WallpaperRepository {
         _wallpaperCache[w.id] = w;
       }
 
+      if (startAfter == null) {
+        final listKey = 'color_${color}_limit_${limit ?? 'all'}';
+        await _cacheWallpapersList(listKey, wallpapers);
+      }
+
       return wallpapers;
     } catch (e) {
       throw Exception('Failed to fetch wallpapers by color: $e');
+    }
+  }
+
+  /// Get wallpapers by category using a Cache-First strategy
+  Stream<List<WallpaperModel>> getWallpapersByCategoryCacheFirst(
+    String categoryId, {
+    int? limit,
+    String orderBy = 'createdAt',
+  }) async* {
+    final listKey = '${categoryId}_limit_${limit ?? 'all'}_order_$orderBy';
+
+    // 1. Yield cached wallpapers first
+    final cached = await _getCachedWallpapersList(listKey);
+    if (cached.isNotEmpty) {
+      yield cached;
+    }
+
+    // 2. Fetch fresh wallpapers from Firestore
+    try {
+      final fresh = await getWallpapersByCategory(
+        categoryId,
+        limit: limit,
+        orderBy: orderBy,
+      );
+      yield fresh;
+    } catch (e) {
+      // If Firestore fetch fails, and we already yielded cached wallpapers, we don't throw
+      if (cached.isEmpty) {
+        rethrow;
+      }
+    }
+  }
+
+  /// Get all wallpapers using a Cache-First strategy
+  Stream<List<WallpaperModel>> getAllWallpapersCacheFirst({int? limit}) async* {
+    final listKey = 'all_limit_${limit ?? 'all'}';
+
+    // 1. Yield cached wallpapers first
+    final cached = await _getCachedWallpapersList(listKey);
+    if (cached.isNotEmpty) {
+      yield cached;
+    }
+
+    // 2. Fetch fresh wallpapers from Firestore
+    try {
+      final fresh = await getAllWallpapers(limit: limit);
+      yield fresh;
+    } catch (e) {
+      if (cached.isEmpty) {
+        rethrow;
+      }
+    }
+  }
+
+  /// Get wallpapers by color using a Cache-First strategy
+  Stream<List<WallpaperModel>> getWallpapersByColorCacheFirst(
+    String color, {
+    int? limit,
+  }) async* {
+    final listKey = 'color_${color}_limit_${limit ?? 'all'}';
+
+    // 1. Yield cached wallpapers first
+    final cached = await _getCachedWallpapersList(listKey);
+    if (cached.isNotEmpty) {
+      yield cached;
+    }
+
+    // 2. Fetch fresh wallpapers from Firestore
+    try {
+      final fresh = await getWallpapersByColor(
+        color,
+        limit: limit,
+      );
+      yield fresh;
+    } catch (e) {
+      if (cached.isEmpty) {
+        rethrow;
+      }
     }
   }
 
@@ -182,6 +310,9 @@ class WallpaperRepository {
         _wallpaperCache[w.id] = w;
       }
 
+      final listKey = 'all_limit_${limit ?? 'all'}';
+      await _cacheWallpapersList(listKey, wallpapers);
+
       return wallpapers;
     } catch (e) {
       throw Exception('Failed to fetch all wallpapers: $e');
@@ -249,7 +380,7 @@ class WallpaperRepository {
 
       // For MVP: Fetch a limited number of recent wallpapers and filter client-side
       // Limiting to 400 prevents OOM crashes and massive Firestore read costs.
-      // For a fully scalable solution, implement Algolia or Firebase Search Extensions.
+      // For a fully scalable solution, implement Firebase Search Extensions.
       final querySnapshot = await _firestore
           .collection(AppConstants.wallpapersCollection)
           .where('isActive', isEqualTo: true)

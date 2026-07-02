@@ -111,16 +111,17 @@ class ColorWallpaperBloc
     emit(const ColorWallpaperLoading());
     try {
       final limit = event.limit ?? 20;
-      final wallpapers = await _repository.getWallpapersByColor(
-        event.colorName,
-        limit: limit,
-      );
-      emit(
-        ColorWallpaperLoaded(
+      await emit.forEach<List<WallpaperModel>>(
+        _repository.getWallpapersByColorCacheFirst(
+          event.colorName,
+          limit: limit,
+        ),
+        onData: (wallpapers) => ColorWallpaperLoaded(
           wallpapers,
           event.colorName,
           hasReachedMax: wallpapers.length < limit,
         ),
+        onError: (e, s) => ColorWallpaperError(e.toString()),
       );
     } catch (e) {
       emit(ColorWallpaperError(e.toString()));

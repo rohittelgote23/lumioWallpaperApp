@@ -20,7 +20,7 @@ class CategorySection extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (context) =>
-          WallpaperBloc(repository: WallpaperRepository())
+          WallpaperBloc(repository: RepositoryProvider.of<WallpaperRepository>(context))
             ..add(LoadTopWallpapers(category.id, limit: 10)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

@@ -91,6 +91,48 @@ class WallpaperModel extends Equatable {
     };
   }
 
+  /// Convert WallpaperModel to a plain map suitable for Hive storage
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'categoryIds': categoryIds,
+      'thumbnail_url': thumbnailUrl,
+      'full_url': fullUrl,
+      'color_palette': colorPalette,
+      'isActive': isActive,
+      'downloads': downloads,
+      'likes': likes,
+      'views': views,
+      'isPremium': isPremium,
+      'createdAt': createdAt.toIso8601String(),
+      'tags': tags,
+      'info': info,
+      'type': type,
+    };
+  }
+
+  /// Create WallpaperModel from a plain map (loaded from Hive)
+  factory WallpaperModel.fromJson(Map<String, dynamic> json) {
+    return WallpaperModel(
+      id: json['id'] ?? '',
+      title: json['title'] ?? '',
+      categoryIds: List<String>.from(json['categoryIds'] ?? []),
+      thumbnailUrl: json['thumbnail_url'] ?? '',
+      fullUrl: json['full_url'] ?? '',
+      colorPalette: List<String>.from(json['color_palette'] ?? []),
+      isActive: json['isActive'] ?? true,
+      downloads: json['downloads'] ?? 0,
+      likes: json['likes'] ?? 0,
+      views: json['views'] ?? 0,
+      isPremium: json['isPremium'] ?? false,
+      createdAt: _parseDate(json['createdAt']),
+      tags: List<String>.from(json['tags'] ?? []),
+      info: json['info'] ?? '',
+      type: json['type'] ?? 'image',
+    );
+  }
+
   /// Create a copy with modified fields
   WallpaperModel copyWith({
     String? id,

@@ -12,7 +12,7 @@ class BestOfMonthSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (context) =>
-          WallpaperBloc(repository: WallpaperRepository())
+          WallpaperBloc(repository: RepositoryProvider.of<WallpaperRepository>(context))
             ..add(const LoadAllWallpapers(limit: 5)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

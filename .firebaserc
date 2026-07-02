@@ -1,0 +1,12 @@
+{
+  "projects": {
+    "default": "lumiowalls"
+  },
+  "targets": {},
+  "etags": {
+    "lumiowalls": {
+      "extensionInstances": {}
+    }
+  },
+  "dataconnectEmulatorConfig": {}
+}

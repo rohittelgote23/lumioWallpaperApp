@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lumiowalls/features/downloads/view/downloads_screen.dart';
-import '../../search/view/search_page.dart';
 import '../../settings/view/settings_screen.dart';
 
 class HomeAppBar extends StatelessWidget {
@@ -41,21 +40,6 @@ class HomeAppBar extends StatelessWidget {
                       context,
                       MaterialPageRoute(
                         builder: (context) => const DownloadsScreen(),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(width: 12),
-
-                // Search Icon
-                _buildIconButton(
-                  context,
-                  icon: Icons.search_rounded,
-                  color: theme.iconTheme.color!,
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const SearchPage(),
                       ),
                     );
                   },

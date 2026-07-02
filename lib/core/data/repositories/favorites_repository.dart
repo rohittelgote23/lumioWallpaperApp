@@ -68,10 +68,11 @@ class FavoritesRepository {
       }
 
       // Update in-memory cache directly
-      if (_cachedFavoriteIds != null && !_cachedFavoriteIds!.contains(wallpaperId)) {
+      if (_cachedFavoriteIds != null &&
+          !_cachedFavoriteIds!.contains(wallpaperId)) {
         _cachedFavoriteIds!.add(wallpaperId);
-      } else if (_cachedFavoriteIds == null) {
-        _cachedFavoriteIds = [wallpaperId];
+      } else {
+        _cachedFavoriteIds ??= [wallpaperId];
       }
 
       return true;
@@ -121,7 +122,7 @@ class FavoritesRepository {
   /// Check if a wallpaper is in favorites (mostly for UI checks, might need async for cloud)
   /// For accurate cloud status, better to rely on the list loaded in Cubit.
   bool isFavoriteLocally(String wallpaperId) {
-    return _localFavoritesBox.containsKey(wallpaperId) || 
+    return _localFavoritesBox.containsKey(wallpaperId) ||
         _localFavoritesBox.values.contains(wallpaperId);
   }
 

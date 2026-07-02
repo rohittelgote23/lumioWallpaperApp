@@ -441,58 +441,5 @@ class WallpaperRepository with WidgetsBindingObserver {
     }
   }
 
-  /// Search wallpapers by title or tags
-  Future<List<WallpaperModel>> searchWallpapers(String query) async {
-    try {
-      final lowerQuery = query.toLowerCase().trim();
-      if (lowerQuery.isEmpty) return [];
 
-      // For MVP: Fetch a limited number of recent wallpapers and filter client-side
-      // Limiting to 400 prevents OOM crashes and massive Firestore read costs.
-      // For a fully scalable solution, implement Firebase Search Extensions.
-      final querySnapshot = await _firestore
-          .collection(AppConstants.wallpapersCollection)
-          .where('isActive', isEqualTo: true)
-          .orderBy('createdAt', descending: true)
-          .limit(400)
-          .get();
-
-      final allWallpapers = querySnapshot.docs
-          .map((doc) => WallpaperModel.fromFirestore(doc))
-          .toList();
-
-      for (final w in allWallpapers) {
-        _wallpaperCache[w.id] = w;
-      }
-
-      return allWallpapers.where((wallpaper) {
-        try {
-          final titleMatch = wallpaper.title.toLowerCase().contains(lowerQuery);
-
-          bool tagMatch = false;
-          // Robust tag checking
-          if (wallpaper.tags.isNotEmpty) {
-            tagMatch = wallpaper.tags.any(
-              (tag) => tag.toString().toLowerCase().contains(lowerQuery),
-            );
-          }
-
-          bool colorMatch = false;
-          if (wallpaper.colorPalette.isNotEmpty) {
-            colorMatch = wallpaper.colorPalette.any(
-              (color) => color.toString().toLowerCase().contains(lowerQuery),
-            );
-          }
-
-          return titleMatch || tagMatch || colorMatch;
-        } catch (e) {
-          // Log error for specific item but don't crash search
-          // print('Error filtering wallpaper ${wallpaper.id}: $e');
-          return false;
-        }
-      }).toList();
-    } catch (e) {
-      throw Exception('Failed to search wallpapers: $e');
-    }
-  }
 }

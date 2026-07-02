@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'package:flutter/widgets.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:hive/hive.dart';
 import '../models/wallpaper_model.dart';
@@ -7,12 +9,87 @@ import '../../utils/constants.dart';
 ///
 /// Handles all Firestore interactions for wallpapers
 /// Provides methods to fetch wallpapers by category with pagination support
-class WallpaperRepository {
+class WallpaperRepository with WidgetsBindingObserver {
   final FirebaseFirestore _firestore;
   final Map<String, WallpaperModel> _wallpaperCache = {};
+  Timer? _syncTimer;
 
   WallpaperRepository({FirebaseFirestore? firestore})
-    : _firestore = firestore ?? FirebaseFirestore.instance;
+      : _firestore = firestore ?? FirebaseFirestore.instance {
+    WidgetsBinding.instance.addObserver(this);
+    _syncTimer = Timer.periodic(const Duration(minutes: 3), (timer) {
+      syncBufferedUpdates();
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.detached) {
+      syncBufferedUpdates();
+    }
+  }
+
+  void dispose() {
+    _syncTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+  }
+
+  Future<void> syncBufferedUpdates() async {
+    try {
+      final box = await Hive.openBox<int>('buffered_updates');
+      if (box.isEmpty) return;
+
+      final keys = List<String>.from(box.keys);
+      final Map<String, Map<String, int>> updatesByWallpaper = {};
+
+      for (final key in keys) {
+        final parts = key.split('_');
+        if (parts.length < 2) continue;
+        final type = parts[0]; // 'views', 'downloads', 'likes'
+        final id = parts.sublist(1).join('_');
+        final val = box.get(key) ?? 0;
+
+        if (val == 0) continue;
+
+        updatesByWallpaper.putIfAbsent(id, () => {});
+        updatesByWallpaper[id]![type] = val;
+      }
+
+      if (updatesByWallpaper.isEmpty) return;
+
+      final batch = _firestore.batch();
+      int count = 0;
+
+      for (final entry in updatesByWallpaper.entries) {
+        final id = entry.key;
+        final fields = entry.value;
+
+        final docRef = _firestore.collection(AppConstants.wallpapersCollection).doc(id);
+        final Map<String, dynamic> updateData = {};
+        fields.forEach((type, val) {
+          updateData[type] = FieldValue.increment(val);
+        });
+
+        batch.update(docRef, updateData);
+        count++;
+
+        if (count >= 500) {
+          await batch.commit();
+          // Reset count since we committed the batch, but in practice session changes won't exceed 500 documents.
+          count = 0;
+        }
+      }
+
+      if (count > 0) {
+        await batch.commit();
+      }
+
+      // Clear the box for successfully synced updates
+      await box.clear();
+    } catch (e) {
+      // Fail silently to not disrupt the user
+    }
+  }
 
   Future<void> _cacheWallpapersList(String listKey, List<WallpaperModel> wallpapers) async {
     try {
@@ -295,53 +372,72 @@ class WallpaperRepository {
   /// Increment view count for a wallpaper
   Future<void> incrementViews(String wallpaperId) async {
     try {
-      final docRef = _firestore
-          .collection(AppConstants.wallpapersCollection)
-          .doc(wallpaperId);
+      // 1. Update in-memory cache immediately so UI reflects it
+      if (_wallpaperCache.containsKey(wallpaperId)) {
+        final current = _wallpaperCache[wallpaperId]!;
+        _wallpaperCache[wallpaperId] = current.copyWith(views: current.views + 1);
+      }
 
-      await docRef.update({'views': FieldValue.increment(1)});
+      // 2. Increment in local buffer
+      final box = await Hive.openBox<int>('buffered_updates');
+      final currentVal = box.get('views_$wallpaperId') ?? 0;
+      await box.put('views_$wallpaperId', currentVal + 1);
     } catch (e) {
       // Fail silently for metrics
-      // print('Failed to increment views: $e');
     }
   }
 
   /// Increment download count for a wallpaper
   Future<void> incrementDownloads(String wallpaperId) async {
     try {
-      final docRef = _firestore
-          .collection(AppConstants.wallpapersCollection)
-          .doc(wallpaperId);
+      // 1. Update in-memory cache immediately so UI reflects it
+      if (_wallpaperCache.containsKey(wallpaperId)) {
+        final current = _wallpaperCache[wallpaperId]!;
+        _wallpaperCache[wallpaperId] = current.copyWith(downloads: current.downloads + 1);
+      }
 
-      await docRef.update({'downloads': FieldValue.increment(1)});
+      // 2. Increment in local buffer
+      final box = await Hive.openBox<int>('buffered_updates');
+      final currentVal = box.get('downloads_$wallpaperId') ?? 0;
+      await box.put('downloads_$wallpaperId', currentVal + 1);
     } catch (e) {
-      // print('Failed to increment downloads: $e');
+      // Fail silently
     }
   }
 
   /// Increment like count for a wallpaper
   Future<void> incrementLikes(String wallpaperId) async {
     try {
-      final docRef = _firestore
-          .collection(AppConstants.wallpapersCollection)
-          .doc(wallpaperId);
+      // 1. Update in-memory cache immediately so UI reflects it
+      if (_wallpaperCache.containsKey(wallpaperId)) {
+        final current = _wallpaperCache[wallpaperId]!;
+        _wallpaperCache[wallpaperId] = current.copyWith(likes: current.likes + 1);
+      }
 
-      await docRef.update({'likes': FieldValue.increment(1)});
+      // 2. Increment in local buffer
+      final box = await Hive.openBox<int>('buffered_updates');
+      final currentVal = box.get('likes_$wallpaperId') ?? 0;
+      await box.put('likes_$wallpaperId', currentVal + 1);
     } catch (e) {
-      // print('Failed to increment likes: $e');
+      // Fail silently
     }
   }
 
   /// Decrement like count for a wallpaper
   Future<void> decrementLikes(String wallpaperId) async {
     try {
-      final docRef = _firestore
-          .collection(AppConstants.wallpapersCollection)
-          .doc(wallpaperId);
+      // 1. Update in-memory cache immediately so UI reflects it
+      if (_wallpaperCache.containsKey(wallpaperId)) {
+        final current = _wallpaperCache[wallpaperId]!;
+        _wallpaperCache[wallpaperId] = current.copyWith(likes: current.likes - 1);
+      }
 
-      await docRef.update({'likes': FieldValue.increment(-1)});
+      // 2. Decrement in local buffer
+      final box = await Hive.openBox<int>('buffered_updates');
+      final currentVal = box.get('likes_$wallpaperId') ?? 0;
+      await box.put('likes_$wallpaperId', currentVal - 1);
     } catch (e) {
-      // print('Failed to decrement likes: $e');
+      // Fail silently
     }
   }
 

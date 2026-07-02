@@ -42,22 +42,6 @@ class CategoryRepository {
     }
   }
 
-  /// Get categories as a stream for real-time updates
-  ///
-  /// Useful for listening to category changes in real-time
-  Stream<List<CategoryModel>> getCategoriesStream() {
-    return _firestore
-        .collection(AppConstants.categoriesCollection)
-        // .where('isActive', isEqualTo: true)
-        .snapshots()
-        .map((snapshot) {
-          final categories = snapshot.docs
-              .map((doc) => CategoryModel.fromFirestore(doc))
-              .toList();
-          categories.sort((a, b) => a.order.compareTo(b.order));
-          return categories;
-        });
-  }
 
   /// Get a single category by ID
   Future<CategoryModel?> getCategoryById(String categoryId) async {

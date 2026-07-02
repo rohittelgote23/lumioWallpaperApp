@@ -237,33 +237,6 @@ class WallpaperRepository {
     return getWallpapersByCategory(categoryId, limit: limit);
   }
 
-  /// Get wallpapers as a stream for real-time updates
-  Stream<List<WallpaperModel>> getWallpapersByCategoryStream(
-    String categoryId, {
-    int? limit,
-  }) {
-    // If fetching TrendingToday, explicitly sort by views
-    final actualOrderBy = categoryId == 'TrendingToday' ? 'views' : 'createdAt';
-
-    Query query = _firestore
-        .collection(AppConstants.wallpapersCollection)
-        .where('isActive', isEqualTo: true)
-        .orderBy(actualOrderBy, descending: true);
-
-    if (categoryId != 'all' && categoryId != 'TrendingToday') {
-      query = query.where('categoryIds', arrayContains: categoryId);
-    }
-
-    if (limit != null) {
-      query = query.limit(limit);
-    }
-
-    return query.snapshots().map(
-      (snapshot) => snapshot.docs
-          .map((doc) => WallpaperModel.fromFirestore(doc))
-          .toList(),
-    );
-  }
 
   /// Get a single wallpaper by ID
   Future<WallpaperModel?> getWallpaperById(String wallpaperId) async {
